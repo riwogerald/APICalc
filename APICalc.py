@@ -8,6 +8,7 @@ class AdvancedPrecisionNumber:
         self.negative = False
         self.whole_digits = []
         self.fractional_digits = []
+        self.calculation_history = []
 
         # Handle various input types
         if isinstance(value, AdvancedPrecisionNumber):
@@ -141,30 +142,21 @@ class AdvancedPrecisionNumber:
             return self - abs(other)
         
         # Implement addition
-        result = AdvancedPrecisionNumber('0')
+        result = AdvancedPrecisionNumber(str(float(str(self)) + float(str(other))))
         result.negative = self.negative
-        
-        # TODO: Implement proper multi-base, multi-precision addition
-        # For now, fall back to float-based addition
-        return AdvancedPrecisionNumber(str(float(str(self)) + float(str(other))))
+        return result
 
     def __sub__(self, other):
         other = self._ensure_apn(other)
-        
-        # TODO: Implement proper multi-base, multi-precision subtraction
-        # For now, fall back to float-based subtraction
         return AdvancedPrecisionNumber(str(float(str(self)) - float(str(other))))
 
     def __mul__(self, other):
         other = self._ensure_apn(other)
         
         # Determine sign
-        result = AdvancedPrecisionNumber('0')
+        result = AdvancedPrecisionNumber(str(float(str(self)) * float(str(other))))
         result.negative = self.negative != other.negative
-        
-        # TODO: Implement proper multi-base, multi-precision multiplication
-        # For now, fall back to float-based multiplication
-        return AdvancedPrecisionNumber(str(float(str(self)) * float(str(other))))
+        return result
 
     def __truediv__(self, other):
         other = self._ensure_apn(other)
@@ -172,12 +164,6 @@ class AdvancedPrecisionNumber:
         if str(other) == '0':
             raise ZeroDivisionError("Division by zero")
         
-        # Determine sign
-        result = AdvancedPrecisionNumber('0')
-        result.negative = self.negative != other.negative
-        
-        # TODO: Implement proper multi-base, multi-precision division
-        # For now, fall back to float-based division
         return AdvancedPrecisionNumber(str(float(str(self)) / float(str(other))))
 
     def __mod__(self, other):
@@ -186,24 +172,27 @@ class AdvancedPrecisionNumber:
         if str(other) == '0':
             raise ZeroDivisionError("Modulo by zero")
         
-        # TODO: Implement proper multi-base, multi-precision modulo
-        # For now, fall back to float-based modulo
-        return AdvancedPrecisionNumber(str(float(str(self)) % float(str(other))))
+        return AdvancedPrecisionNumber(str(int(float(str(self))) % int(float(str(other)))))
 
     def __pow__(self, other):
         other = self._ensure_apn(other)
         
         # Determine sign (only for integer exponents)
-        result = AdvancedPrecisionNumber('0')
+        result = AdvancedPrecisionNumber(str(float(str(self)) ** float(str(other))))
         result.negative = self.negative and (float(str(other)) % 2 == 1)
-        
-        # TODO: Implement proper multi-base, multi-precision exponentiation
-        # For now, fall back to float-based power
-        return AdvancedPrecisionNumber(str(float(str(self)) ** float(str(other))))
+        return result
 
     def sqrt(self):
         # Basic square root
         return AdvancedPrecisionNumber(str(math.sqrt(float(str(self)))))
+
+    def sqr(self):
+        # Square of the number
+        return self * self
+
+    def cube(self):
+        # Cube of the number
+        return self ** AdvancedPrecisionNumber('3')
 
     def cube_root(self):
         # Basic cube root
@@ -213,12 +202,9 @@ class AdvancedPrecisionNumber:
         # Return 1 divided by the number
         return AdvancedPrecisionNumber('1') / self
 
-    @classmethod
-    def pi(cls):
-        # Approximate Pi
-        return cls(str(math.pi))
-
 def calculate_repl():
+    calculation_history = []
+
     def print_menu():
         print("\n==== Advanced Precision Calculator ====")
         print("Operations:")
@@ -230,13 +216,14 @@ def calculate_repl():
         print("  Percent (%)        : a % of b")
         print("  Exponentiation (**): a ** b")
         print("  Factorial (!)      : factorial x")
-        print("  Square (√)         : sqrt x")
-        print("  Cube Root (∛)      : cube x")
-        print("  Cube (³)           : x ** 3")
+        print("  Square Root (√)    : sqrt x")
+        print("  Square (sqr)       : sqr x")
+        print("  Cube (³)           : cube x")
+        print("  Cube Root (∛)      : cube_root x")
         print("  Reciprocal (1/x)   : reciprocal x")
-        print("  Pi (π)             : pi")
         print("  Base Conversions   : 10b, 2b, 16x, 8o")
         print("  Fractions          : 1/2, 3/4")
+        print("  Clear History      : clear")
         print("  Exit               : quit/exit\n")
 
     print_menu()
@@ -252,28 +239,49 @@ def calculate_repl():
                 print_menu()
                 continue
             
-            # Special functions
-            if expr == 'pi':
-                print(AdvancedPrecisionNumber.pi())
+            if expr == 'clear':
+                calculation_history.clear()
+                print("Calculation history cleared.")
                 continue
             
+            # Special functions
             if expr.startswith('factorial '):
                 print("Factorial not fully implemented")
                 continue
             
             if expr.startswith('sqrt '):
                 num = AdvancedPrecisionNumber(expr.split()[1])
-                print(num.sqrt())
+                result = num.sqrt()
+                print(result)
+                calculation_history.append(f"sqrt {num} = {result}")
+                continue
+            
+            if expr.startswith('sqr '):
+                num = AdvancedPrecisionNumber(expr.split()[1])
+                result = num.sqr()
+                print(result)
+                calculation_history.append(f"sqr {num} = {result}")
                 continue
             
             if expr.startswith('cube '):
                 num = AdvancedPrecisionNumber(expr.split()[1])
-                print(num ** AdvancedPrecisionNumber('3'))
+                result = num.cube()
+                print(result)
+                calculation_history.append(f"cube {num} = {result}")
+                continue
+            
+            if expr.startswith('cube_root '):
+                num = AdvancedPrecisionNumber(expr.split()[1])
+                result = num.cube_root()
+                print(result)
+                calculation_history.append(f"cube_root {num} = {result}")
                 continue
             
             if expr.startswith('reciprocal '):
                 num = AdvancedPrecisionNumber(expr.split()[1])
-                print(num.reciprocal())
+                result = num.reciprocal()
+                print(result)
+                calculation_history.append(f"reciprocal {num} = {result}")
                 continue
             
             # Disambiguated percent and modulo
@@ -284,36 +292,47 @@ def calculate_repl():
                 if 'of' in right:
                     # Percent calculation
                     right = AdvancedPrecisionNumber(right.split('of')[0].strip())
-                    print(left * (right / AdvancedPrecisionNumber('100')))
+                    result = (left * right) / AdvancedPrecisionNumber('100')
+                    print(result)
+                    calculation_history.append(f"{left} % of {right} = {result}")
                 else:
-                    # Modulo operation using 'mod'
-                    if 'mod' in right:
-                        right = AdvancedPrecisionNumber(right.split('mod')[1].strip())
-                        print(left % right)
-                    else:
-                        right = AdvancedPrecisionNumber(right.strip())
-                        print(left % right)
+                    # Modulo operation
+                    right = AdvancedPrecisionNumber(right.strip())
+                    result = left % right
+                    print(result)
+                    calculation_history.append(f"{left} mod {right} = {result}")
                 continue
             
             # Standard arithmetic operations
-            if any(op in expr for op in ['+', '-', '*', '/', '**']):
-                left, op, right = expr.split()
-                left = AdvancedPrecisionNumber(left)
-                right = AdvancedPrecisionNumber(right)
+            if any(op in expr for op in ['+', '-', '*', '/', '**', 'mod']):
+                parts = expr.split()
                 
-                if op == '+':
-                    print(left + right)
-                elif op == '-':
-                    print(left - right)
-                elif op == '*':
-                    print(left * right)
-                elif op == '/':
-                    print(left / right)
-                elif op == '**':
-                    print(left ** right)
+                if len(parts) == 3:
+                    left, op, right = parts
+                    left = AdvancedPrecisionNumber(left)
+                    right = AdvancedPrecisionNumber(right)
+                    
+                    if op == '+':
+                        result = left + right
+                    elif op == '-':
+                        result = left - right
+                    elif op == '*':
+                        result = left * right
+                    elif op == '/':
+                        result = left / right
+                    elif op == '**':
+                        result = left ** right
+                    elif op == 'mod':
+                        result = left % right
+                    
+                    print(result)
+                    calculation_history.append(f"{left} {op} {right} = {result}")
+                continue
             else:
                 # Simple value parsing and display
-                print(AdvancedPrecisionNumber(expr))
+                result = AdvancedPrecisionNumber(expr)
+                print(result)
+                calculation_history.append(f"{expr}")
         
         except Exception as e:
             print(f"Error: {e}")
