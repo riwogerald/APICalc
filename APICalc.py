@@ -98,10 +98,35 @@ class AdvancedPrecisionNumber:
         raise ValueError(f"Cannot represent digit {digit} in base {self.base}")
 
     def _base_convert(self, target_base):
-        # Convert number to target base
-        # This is a placeholder for a more sophisticated base conversion
-        decimal_value = self._to_decimal()
-        return self._from_decimal(decimal_value, target_base)
+        # Convert whole part
+        whole_decimal = sum(digit * (self.base ** power) 
+                        for power, digit in enumerate(self.whole_digits))
+    
+        # Convert whole part to target base
+        new_whole_digits = []
+        while whole_decimal > 0:
+            new_whole_digits.insert(0, whole_decimal % target_base)
+            whole_decimal //= target_base
+    
+        # Convert fractional part
+        frac_decimal = sum(digit * (self.base ** -(power+1)) 
+                       for power, digit in enumerate(self.fractional_digits))
+    
+        # Convert fractional part to target base
+        new_frac_digits = []
+        for _ in range(self.precision):
+            frac_decimal *= target_base
+            digit = int(frac_decimal)
+            new_frac_digits.append(digit)
+            frac_decimal -= digit
+    
+        # Create new AdvancedPrecisionNumber
+        new_num = AdvancedPrecisionNumber('0', target_base, self.precision)
+        new_num.whole_digits = new_whole_digits if new_whole_digits else [0]
+        new_num.fractional_digits = new_frac_digits
+        new_num.negative = self.negative
+    
+        return new_num
 
     def _to_decimal(self):
         # Convert current representation to decimal float
@@ -205,8 +230,7 @@ class AdvancedPrecisionNumber:
             result.negative = self.negative and (int(other._to_decimal()) % 2 == 1)
         
         return result
-
-    # Existing specialized methods remain the same
+    
     def sqrt(self):
         return self._from_decimal(math.sqrt(self._to_decimal()), self.base)
 
@@ -221,6 +245,14 @@ class AdvancedPrecisionNumber:
 
     def reciprocal(self):
         return AdvancedPrecisionNumber('1', self.base, self.precision) / self
+
+    def factorial(self):
+        if self.negative or self.fractional_digits != [0] * len(self.fractional_digits):
+            raise ValueError("Factorial is only defined for non-negative integers")
+        n = int(self._to_decimal())
+    result = math.factorial(n)  # Use built-in math.factorial for efficiency
+    
+    return self._from_decimal(result, self.base)
         
 def calculate_repl():
     calculation_history = []
@@ -247,6 +279,14 @@ def calculate_repl():
         print("  Exit               : quit/exit\n")
 
     print_menu()
+
+    def perform_unary_operation(operation, expr):
+        num = AdvancedPrecisionNumber(expr.split()[1])
+        result = getattr(num, operation)()
+        print(result)
+        calculation_history.append(f"{operation} {num} = {result}")
+
+    print_menu()
     
     while True:
         try:
@@ -258,15 +298,35 @@ def calculate_repl():
             if expr == 'menu':
                 print_menu()
                 continue
-            
+                        
             if expr == 'clear':
                 calculation_history.clear()
                 print("Calculation history cleared.")
                 continue
+
+            # Unified unary operation handling
+            unary_ops = {
+                'factorial': 'factorial',
+                'sqrt': 'sqrt',
+                'sqr': 'sqr',
+                'cube': 'cube',
+                'cube_root': 'cube_root',
+                'reciprocal': 'reciprocal'
+            }
+            
+            for prefix, method in unary_ops.items():
+                if expr.startswith(f'{prefix} ') or (method == 'factorial' and expr.endswith('!')):
+                    num_expr = expr.split()[1] if not expr.endswith('!') else expr[:-1]
+                    perform_unary_operation(method, f'{prefix} {num_expr}')
+                    break
+            else:
             
             # Special functions
-            if expr.startswith('factorial '):
-                print("Factorial not fully implemented")
+                if expr.startswith('factorial '):
+                    num = AdvancedPrecisionNumber(expr.split()[1])
+                    result = num.factorial()
+                    print(result)
+                    calculation_history.append(f"factorial {num} = {result}")
                 continue
             
             if expr.startswith('sqrt '):
@@ -274,7 +334,7 @@ def calculate_repl():
                 result = num.sqrt()
                 print(result)
                 calculation_history.append(f"sqrt {num} = {result}")
-                continue
+            continue
             
             if expr.startswith('sqr '):
                 num = AdvancedPrecisionNumber(expr.split()[1])
@@ -303,18 +363,30 @@ def calculate_repl():
                 print(result)
                 calculation_history.append(f"reciprocal {num} = {result}")
                 continue
+
+             # Factorial implementation
+            if expr.startswith('factorial ') or expr.endswith('!'):
+                if expr.startswith('factorial '):
+                    num = AdvancedPrecisionNumber(expr.split()[1])
+                else:
+                    num = AdvancedPrecisionNumber(expr[:-1])
+                
+                result = num.factorial()
+                print(result)
+                calculation_history.append(f"factorial {num} = {result}")
+                continue
             
-            # Disambiguated percent and modulo
+             # Percent and modulo handling
             if '%' in expr:
                 left, right = expr.split('%')
                 left = AdvancedPrecisionNumber(left.strip())
                 
                 if 'of' in right:
-                    # Percent calculation
-                    right = AdvancedPrecisionNumber(right.split('of')[0].strip())
-                    result = (left * right) / AdvancedPrecisionNumber('100')
+                    # Percent calculation: a % of b
+                    right = AdvancedPrecisionNumber(right.split('of')[1].strip())
+                    result = (left / AdvancedPrecisionNumber('100')) * right
                     print(result)
-                    calculation_history.append(f"{left} % of {right} = {result}")
+                    calculation_history.append(f"{left}% of {right} = {result}")
                 else:
                     # Modulo operation
                     right = AdvancedPrecisionNumber(right.strip())
