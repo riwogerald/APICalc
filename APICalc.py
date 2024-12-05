@@ -162,15 +162,19 @@ class AdvancedPrecisionNumber:
         # Enhanced string representation with base prefix
         sign = '-' if self.negative else ''
         whole = ''.join(reversed([self._digit_to_char(d) for d in self.whole_digits]))
-        whole = whole or '0'
+        whole = whole.lstrip('0') or '0'
         
+        frac_digits = [self._digit_to_char(d) for d in self.fractional_digits]
+        while frac_digits and frac_digits[-1] == '0':
+            frac_digits.pop()
+
         base_prefix = {2: '0b', 8: '0o', 10: '', 16: '0x'}.get(self.base, f'[base{self.base}]')
-        
-        if self.fractional_digits:
-            frac = ''.join([self._digit_to_char(d) for d in self.fractional_digits])
+    
+        if frac_digits:
+            frac = ''.join(frac_digits)
             return f"{sign}{base_prefix}{whole}.{frac}"
         return f"{sign}{base_prefix}{whole}"
-
+              
     # Existing comparison and arithmetic methods remain largely the same
     def __lt__(self, other):
         other = self._ensure_apn(other)
@@ -252,6 +256,34 @@ class AdvancedPrecisionNumber:
         n = int(self._to_decimal())
         result = math.factorial(n)  # Use built-in math.factorial for efficiency    
         return self._from_decimal(result, self.base)
+    
+    def log(self, base=None):
+        """
+        Calculate logarithm of the number.
+        If base is not specified, defaults to natural logarithm (base e).
+        """
+        if self.negative or self._to_decimal() <= 0:
+            raise ValueError("Logarithm is only defined for positive numbers")
+    
+        if base is None:
+            # Natural logarithm
+            return self._from_decimal(math.log(self._to_decimal()), self.base)
+    
+        # Logarithm with specified base
+        base = AdvancedPrecisionNumber(base) if not isinstance(base, AdvancedPrecisionNumber) else base
+        return self._from_decimal(
+            math.log(self._to_decimal()) / math.log(base._to_decimal()), 
+            self.base
+        )
+
+    def inverse(self):
+        """
+        Calculate the multiplicative inverse (1/x)
+        """
+        if abs(self._to_decimal()) < 1e-10:
+            raise ZeroDivisionError("Cannot calculate inverse of zero")
+    
+        return self.reciprocal()
             
 def calculate_repl():
     calculation_history = []
@@ -275,6 +307,8 @@ def calculate_repl():
         print(f"{'Cube':^20}{'cube 4':^25}")
         print(f"{'Cube Root':^20}{'cube_root 4':^25}")
         print(f"{'Reciprocal':^20}{'reciprocal 4':^25}")
+        print(f"{'Logarithm':^20}{'log 4' or 'log 4 2':^25}")
+        print(f"{'Inverse':^20}{'inverse 4':^25}")
         print(f"{'Base Conversion':^20}{'0b1010 or 0x10':^25}")
         print("═" * 45)
         print("Type 'menu' to show this help, 'quit' to exit")
@@ -322,15 +356,16 @@ def calculate_repl():
             # Validate and clean syntax
             expr = validate_syntax(raw_expr)
 
-            # Unary operations
             unary_ops = {
                 'factorial': 'factorial',
                 'sqrt': 'sqrt',
                 'sqr': 'sqr',
                 'cube': 'cube',
                 'cube_root': 'cube_root',
-                'reciprocal': 'reciprocal'
-            }
+                'reciprocal': 'reciprocal',
+                'log': 'log',      
+                'inverse': 'inverse'  
+                }
             
             for prefix, method in unary_ops.items():
                 if expr.startswith(f'{prefix} ') or (method == 'factorial' and expr.endswith('!')):
