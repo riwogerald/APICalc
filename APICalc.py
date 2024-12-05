@@ -250,9 +250,8 @@ class AdvancedPrecisionNumber:
         if self.negative or self.fractional_digits != [0] * len(self.fractional_digits):
             raise ValueError("Factorial is only defined for non-negative integers")
         n = int(self._to_decimal())
-    result = math.factorial(n)  # Use built-in math.factorial for efficiency
-    
-    return self._from_decimal(result, self.base)
+        result = math.factorial(n)  # Use built-in math.factorial for efficiency    
+        return self._from_decimal(result, self.base)
         
 def calculate_repl():
     calculation_history = []
@@ -285,9 +284,7 @@ def calculate_repl():
         result = getattr(num, operation)()
         print(result)
         calculation_history.append(f"{operation} {num} = {result}")
-
-    print_menu()
-    
+   
     while True:
         try:
             expr = input(">>> ").strip().lower()
