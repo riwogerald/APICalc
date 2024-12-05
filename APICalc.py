@@ -363,11 +363,9 @@ def calculate_repl():
 
              # Factorial implementation
             if expr.startswith('factorial ') or expr.endswith('!'):
-                if expr.startswith('factorial '):
-                    num = AdvancedPrecisionNumber(expr.split()[1])
-                else:
-                    num = AdvancedPrecisionNumber(expr[:-1])
-                
+                num = AdvancedPrecisionNumber(expr.split()[1])
+            else:
+                num = AdvancedPrecisionNumber(expr[:-1])
                 result = num.factorial()
                 print(result)
                 calculation_history.append(f"factorial {num} = {result}")
