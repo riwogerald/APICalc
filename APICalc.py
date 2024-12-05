@@ -252,56 +252,77 @@ class AdvancedPrecisionNumber:
         n = int(self._to_decimal())
         result = math.factorial(n)  # Use built-in math.factorial for efficiency    
         return self._from_decimal(result, self.base)
-        
+            
 def calculate_repl():
     calculation_history = []
 
     def print_menu():
-        print("\n==== Advanced Precision Calculator ====")
-        print("Operations:")
-        print("  Addition (+)       : a + b")
-        print("  Subtraction (-)    : a - b")
-        print("  Multiplication (*) : a * b")
-        print("  Division (/)       : a / b")
-        print("  Modulo (mod)       : a mod b")
-        print("  Percent (%)        : a % of b")
-        print("  Exponentiation (**): a ** b")
-        print("  Factorial (!)      : factorial x")
-        print("  Square Root (√)    : sqrt x")
-        print("  Square (sqr)       : sqr x")
-        print("  Cube (³)           : cube x")
-        print("  Cube Root (∛)      : cube_root x")
-        print("  Reciprocal (1/x)   : reciprocal x")
-        print("  Base Conversions   : 10b, 2b, 16x, 8o")
-        print("  Fractions          : 1/2, 3/4")
-        print("  Clear History      : clear")
-        print("  Exit               : quit/exit\n")
+        print("\n" + "═" * 45)
+        print(f"{'ADVANCED PRECISION CALCULATOR':^45}")
+        print("═" * 45)
+        print(f"{'OPERATION':^20}{'SYNTAX EXAMPLE':^25}")
+        print("-" * 45)
+        print(f"{'Addition':^20}{'4 + 5':^25}")
+        print(f"{'Subtraction':^20}{'4 - 5':^25}")
+        print(f"{'Multiplication':^20}{'4 * 5':^25}")
+        print(f"{'Division':^20}{'4 / 5':^25}")
+        print(f"{'Modulo':^20}{'4 mod 5':^25}")
+        print(f"{'Percent':^20}{'4% of 5':^25}")
+        print(f"{'Exponentiation':^20}{'4 ** 2':^25}")
+        print(f"{'Factorial':^20}{'4! or factorial 4':^25}")
+        print(f"{'Square Root':^20}{'sqrt 4':^25}")
+        print(f"{'Square':^20}{'sqr 4':^25}")
+        print(f"{'Cube':^20}{'cube 4':^25}")
+        print(f"{'Cube Root':^20}{'cube_root 4':^25}")
+        print(f"{'Reciprocal':^20}{'reciprocal 4':^25}")
+        print(f"{'Base Conversion':^20}{'0b1010 or 0x10':^25}")
+        print("═" * 45)
+        print("Type 'menu' to show this help, 'quit' to exit")
+        print("═" * 45)
 
-    print_menu()
+    def validate_syntax(expr):
+        """Validate and clean calculator input syntax"""
+        # Remove extra whitespaces
+        expr = ' '.join(expr.split())
+        
+        # Check for adjacent operators or missing spaces
+        operators = ['+', '-', '*', '/', '**', 'mod', '%', 'of']
+        for op in operators:
+            expr = expr.replace(f'{op}', f' {op} ')
+        
+        # Remove duplicate spaces and strip
+        expr = ' '.join(expr.split()).strip()
+        
+        return expr
 
     def perform_unary_operation(operation, expr):
         num = AdvancedPrecisionNumber(expr.split()[1])
         result = getattr(num, operation)()
         print(result)
         calculation_history.append(f"{operation} {num} = {result}")
-   
+
+    print_menu()
+
     while True:
         try:
-            expr = input(">>> ").strip().lower()
+            raw_expr = input(">>> ").strip().lower()
             
-            if expr in ['quit', 'exit', 'q']:
+            if raw_expr in ['quit', 'exit', 'q']:
                 break
             
-            if expr == 'menu':
+            if raw_expr == 'menu':
                 print_menu()
                 continue
                         
-            if expr == 'clear':
+            if raw_expr == 'clear':
                 calculation_history.clear()
                 print("Calculation history cleared.")
                 continue
 
-            # Unified unary operation handling
+            # Validate and clean syntax
+            expr = validate_syntax(raw_expr)
+
+            # Unary operations
             unary_ops = {
                 'factorial': 'factorial',
                 'sqrt': 'sqrt',
@@ -317,112 +338,59 @@ def calculate_repl():
                     perform_unary_operation(method, f'{prefix} {num_expr}')
                     break
             else:
-            
-            # Special functions
-                if expr.startswith('factorial '):
-                    num = AdvancedPrecisionNumber(expr.split()[1])
-                    result = num.factorial()
-                    print(result)
-                    calculation_history.append(f"factorial {num} = {result}")
-                continue
-            
-            if expr.startswith('sqrt '):
-                num = AdvancedPrecisionNumber(expr.split()[1])
-                result = num.sqrt()
-                print(result)
-                calculation_history.append(f"sqrt {num} = {result}")
-            continue
-            
-            if expr.startswith('sqr '):
-                num = AdvancedPrecisionNumber(expr.split()[1])
-                result = num.sqr()
-                print(result)
-                calculation_history.append(f"sqr {num} = {result}")
-                continue
-            
-            if expr.startswith('cube '):
-                num = AdvancedPrecisionNumber(expr.split()[1])
-                result = num.cube()
-                print(result)
-                calculation_history.append(f"cube {num} = {result}")
-                continue
-            
-            if expr.startswith('cube_root '):
-                num = AdvancedPrecisionNumber(expr.split()[1])
-                result = num.cube_root()
-                print(result)
-                calculation_history.append(f"cube_root {num} = {result}")
-                continue
-            
-            if expr.startswith('reciprocal '):
-                num = AdvancedPrecisionNumber(expr.split()[1])
-                result = num.reciprocal()
-                print(result)
-                calculation_history.append(f"reciprocal {num} = {result}")
-                continue
-
-             # Factorial implementation
-            if expr.startswith('factorial ') or expr.endswith('!'):
-                num = AdvancedPrecisionNumber(expr.split()[1])
-            else:
-                num = AdvancedPrecisionNumber(expr[:-1])
-                result = num.factorial()
-                print(result)
-                calculation_history.append(f"factorial {num} = {result}")
-                continue
-            
-             # Percent and modulo handling
-            if '%' in expr:
-                left, right = expr.split('%')
-                left = AdvancedPrecisionNumber(left.strip())
-                
-                if 'of' in right:
-                    # Percent calculation: a % of b
-                    right = AdvancedPrecisionNumber(right.split('of')[1].strip())
-                    result = (left / AdvancedPrecisionNumber('100')) * right
-                    print(result)
-                    calculation_history.append(f"{left}% of {right} = {result}")
-                else:
-                    # Modulo operation
-                    right = AdvancedPrecisionNumber(right.strip())
-                    result = left % right
-                    print(result)
-                    calculation_history.append(f"{left} mod {right} = {result}")
-                continue
-            
-            # Standard arithmetic operations
-            if any(op in expr for op in ['+', '-', '*', '/', '**', 'mod']):
-                parts = expr.split()
-                
-                if len(parts) == 3:
-                    left, op, right = parts
-                    left = AdvancedPrecisionNumber(left)
-                    right = AdvancedPrecisionNumber(right)
+                # Percent and modulo handling
+                if '%' in expr:
+                    left, right = expr.split('%')
+                    left = AdvancedPrecisionNumber(left.strip())
                     
-                    if op == '+':
-                        result = left + right
-                    elif op == '-':
-                        result = left - right
-                    elif op == '*':
-                        result = left * right
-                    elif op == '/':
-                        result = left / right
-                    elif op == '**':
-                        result = left ** right
-                    elif op == 'mod':
+                    if 'of' in right:
+                        # Percent calculation: a % of b
+                        right = AdvancedPrecisionNumber(right.split('of')[1].strip())
+                        result = (left / AdvancedPrecisionNumber('100')) * right
+                        print(result)
+                        calculation_history.append(f"{left}% of {right} = {result}")
+                    else:
+                        # Modulo operation
+                        right = AdvancedPrecisionNumber(right.strip())
                         result = left % right
+                        print(result)
+                        calculation_history.append(f"{left} mod {right} = {result}")
+                    continue
+                
+                # Standard arithmetic operations
+                if any(op in expr for op in ['+', '-', '*', '/', '**', 'mod']):
+                    parts = expr.split()
                     
+                    if len(parts) == 3:
+                        left, op, right = parts
+                        left = AdvancedPrecisionNumber(left)
+                        right = AdvancedPrecisionNumber(right)
+                        
+                        if op == '+':
+                            result = left + right
+                        elif op == '-':
+                            result = left - right
+                        elif op == '*':
+                            result = left * right
+                        elif op == '/':
+                            result = left / right
+                        elif op == '**':
+                            result = left ** right
+                        elif op == 'mod':
+                            result = left % right
+                        
+                        print(result)
+                        calculation_history.append(f"{left} {op} {right} = {result}")
+                    continue
+                else:
+                    # Simple value parsing and display
+                    result = AdvancedPrecisionNumber(expr)
                     print(result)
-                    calculation_history.append(f"{left} {op} {right} = {result}")
-                continue
-            else:
-                # Simple value parsing and display
-                result = AdvancedPrecisionNumber(expr)
-                print(result)
-                calculation_history.append(f"{expr}")
+                    calculation_history.append(f"{expr}")
         
         except Exception as e:
             print(f"Error: {e}")
+            print("Invalid input. Type 'menu' for help.")
 
 if __name__ == "__main__":
     calculate_repl()
