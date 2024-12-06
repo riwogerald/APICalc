@@ -3,14 +3,13 @@ import fractions
 
 class AdvancedPrecisionNumber:
     def __init__(self, value='0', base=10, precision=50):
-        # Enhanced initialization with explicit precision
         self.base = base
         self.precision = precision
         self.negative = False
-        self.whole_digits = []
-        self.fractional_digits = []
+        self.whole_digits = [0]
+        self.fractional_digits = [0] * precision
 
-        # Handle various input types
+        # Handle various input types and parsing
         if isinstance(value, AdvancedPrecisionNumber):
             self.base = value.base
             self.precision = value.precision
@@ -19,28 +18,13 @@ class AdvancedPrecisionNumber:
             self.fractional_digits = value.fractional_digits.copy()
             return
 
-        # Handle fractions
-        if isinstance(value, fractions.Fraction):
-            whole = value.numerator
-            denom = value.denominator
-            value = f"{whole}/{denom}"
-
         # String parsing with enhanced base handling
         if isinstance(value, str):
             value = value.strip().lower()
             self.negative = value.startswith('-')
             value = value.lstrip('-+')
 
-            # Fraction handling
-            if '/' in value:
-                num, denom = value.split('/')
-                num_api = AdvancedPrecisionNumber(num, base, precision)
-                denom_api = AdvancedPrecisionNumber(denom, base, precision)
-                result = num_api / denom_api
-                self.__dict__.update(result.__dict__)
-                return
-
-            # Improved base detection
+            # Base detection
             if value.startswith('0b'):  # Binary
                 base = 2
                 value = value[2:]
@@ -50,34 +34,25 @@ class AdvancedPrecisionNumber:
             elif value.startswith('0o'):  # Octal
                 base = 8
                 value = value[2:]
-            else:
-                base = base
+            
+            self.base = base
 
             # Split whole and fractional parts
             parts = value.split('.')
-            whole = parts[0]
+            whole = parts[0] or '0'
             fractional = parts[1] if len(parts) > 1 else ''
 
-            # Convert digits with base-aware conversion
-            self.base = base
-            self.whole_digits = self._convert_digits_to_decimal(whole)
-            self.fractional_digits = self._convert_digits_to_decimal(fractional)
+            # Convert digits
+            self.whole_digits = [self._char_to_digit(c) for c in whole.replace('_', '')]
+            self.fractional_digits = [self._char_to_digit(c) for c in fractional.replace('_', '')]
             
-            # Trim or pad fractional digits to specified precision
+            # Trim or pad fractional digits
             self.fractional_digits = self.fractional_digits[:precision]
             while len(self.fractional_digits) < precision:
                 self.fractional_digits.append(0)
 
-            # Ensure non-zero representation
-            if not self.whole_digits:
-                self.whole_digits = [0]
-
-    def _convert_digits_to_decimal(self, digit_str):
-        # Convert digits from current base to decimal representation
-        return [self._char_to_digit(c) for c in reversed(digit_str) if c != '_']
-
     def _char_to_digit(self, char):
-        # Convert character to numeric value with base support
+        # Convert character to numeric value
         if char.isdigit():
             digit = int(char)
             if digit >= self.base:
@@ -90,53 +65,24 @@ class AdvancedPrecisionNumber:
         return digit
 
     def _digit_to_char(self, digit):
-        # Convert numeric value to character with base support
+        # Convert numeric value to character
         if 0 <= digit < 10:
             return str(digit)
         if 10 <= digit < 36:
             return chr(digit - 10 + ord('a'))
         raise ValueError(f"Cannot represent digit {digit} in base {self.base}")
 
-    def _base_convert(self, target_base):
-        # Convert whole part
-        whole_decimal = sum(digit * (self.base ** power) 
-                        for power, digit in enumerate(self.whole_digits))
-    
-        # Convert whole part to target base
-        new_whole_digits = []
-        while whole_decimal > 0:
-            new_whole_digits.insert(0, whole_decimal % target_base)
-            whole_decimal //= target_base
-    
-        # Convert fractional part
-        frac_decimal = sum(digit * (self.base ** -(power+1)) 
-                       for power, digit in enumerate(self.fractional_digits))
-    
-        # Convert fractional part to target base
-        new_frac_digits = []
-        for _ in range(self.precision):
-            frac_decimal *= target_base
-            digit = int(frac_decimal)
-            new_frac_digits.append(digit)
-            frac_decimal -= digit
-    
-        # Create new AdvancedPrecisionNumber
-        new_num = AdvancedPrecisionNumber('0', target_base, self.precision)
-        new_num.whole_digits = new_whole_digits if new_whole_digits else [0]
-        new_num.fractional_digits = new_frac_digits
-        new_num.negative = self.negative
-    
-        return new_num
+    def _base_to_decimal(self):
+        # Convert current representation to decimal
+        whole = sum(digit * (self.base ** power) 
+                    for power, digit in enumerate(reversed(self.whole_digits)))
+        frac = sum(digit * (self.base ** -(power+1)) 
+                   for power, digit in enumerate(self.fractional_digits))
+        return whole + frac * (1 if not self.negative else -1)
 
-    def _to_decimal(self):
-        # Convert current representation to decimal float
-        whole = sum(digit * (self.base ** power) for power, digit in enumerate(self.whole_digits))
-        frac = sum(digit * (self.base ** -(power+1)) for power, digit in enumerate(self.fractional_digits))
-        return whole + frac
-
-    def _from_decimal(self, decimal_value, base):
-        # Create new AdvancedPrecisionNumber from decimal value in specified base
-        new_num = AdvancedPrecisionNumber('0', base, self.precision)
+    def _decimal_to_base(self, decimal_value):
+        # Create new AdvancedPrecisionNumber from decimal value
+        new_num = AdvancedPrecisionNumber('0', self.base, self.precision)
         new_num.negative = decimal_value < 0
         decimal_value = abs(decimal_value)
 
@@ -144,14 +90,16 @@ class AdvancedPrecisionNumber:
         whole_part = int(decimal_value)
         new_num.whole_digits = []
         while whole_part > 0:
-            new_num.whole_digits.insert(0, whole_part % base)
-            whole_part //= base
+            new_num.whole_digits.insert(0, whole_part % self.base)
+            whole_part //= self.base
+        if not new_num.whole_digits:
+            new_num.whole_digits = [0]
 
         # Fractional part conversion
         frac_part = decimal_value - int(decimal_value)
         new_num.fractional_digits = []
         for _ in range(self.precision):
-            frac_part *= base
+            frac_part *= self.base
             digit = int(frac_part)
             new_num.fractional_digits.append(digit)
             frac_part -= digit
@@ -159,131 +107,146 @@ class AdvancedPrecisionNumber:
         return new_num
 
     def __str__(self):
-        # Enhanced string representation with base prefix
+        # Enhanced string representation
         sign = '-' if self.negative else ''
-        whole = ''.join(reversed([self._digit_to_char(d) for d in self.whole_digits]))
+        whole = ''.join(self._digit_to_char(d) for d in self.whole_digits)
         whole = whole.lstrip('0') or '0'
         
+        # Trim trailing zeros from fractional part
         frac_digits = [self._digit_to_char(d) for d in self.fractional_digits]
         while frac_digits and frac_digits[-1] == '0':
             frac_digits.pop()
 
+        # Base prefix
         base_prefix = {2: '0b', 8: '0o', 10: '', 16: '0x'}.get(self.base, f'[base{self.base}]')
     
         if frac_digits:
             frac = ''.join(frac_digits)
             return f"{sign}{base_prefix}{whole}.{frac}"
         return f"{sign}{base_prefix}{whole}"
-              
-    # Existing comparison and arithmetic methods remain largely the same
-    def __lt__(self, other):
+
+    def __abs__(self):
+        # Create a copy without negative sign
+        abs_copy = AdvancedPrecisionNumber('0', self.base, self.precision)
+        abs_copy.whole_digits = self.whole_digits.copy()
+        abs_copy.fractional_digits = self.fractional_digits.copy()
+        return abs_copy
+
+    def _ensure_apn(self, other):
+        # Convert to AdvancedPrecisionNumber
+        return other if isinstance(other, AdvancedPrecisionNumber) else \
+               AdvancedPrecisionNumber(str(other), self.base, self.precision)
+
+    def __add__(self, other):
+        # Convert to decimal, add, convert back
         other = self._ensure_apn(other)
-        # Convert to decimal for comparison
-        return self._to_decimal() < other._to_decimal()
+        decimal_sum = self._base_to_decimal() + other._base_to_decimal()
+        return self._decimal_to_base(decimal_sum)
+
+    def __sub__(self, other):
+        # Convert to decimal, subtract, convert back
+        other = self._ensure_apn(other)
+        decimal_diff = self._base_to_decimal() - other._base_to_decimal()
+        return self._decimal_to_base(decimal_diff)
+
+    def __mul__(self, other):
+        # Convert to decimal, multiply, convert back
+        other = self._ensure_apn(other)
+        decimal_product = self._base_to_decimal() * other._base_to_decimal()
+        return self._decimal_to_base(decimal_product)
+
+    def __truediv__(self, other):
+        # Convert to decimal, divide, convert back
+        other = self._ensure_apn(other)
+        if abs(other._base_to_decimal()) < 1e-10:
+            raise ZeroDivisionError("Division by zero")
+        
+        decimal_quotient = self._base_to_decimal() / other._base_to_decimal()
+        return self._decimal_to_base(decimal_quotient)
+
+    def __mod__(self, other):
+        # Convert to decimal, modulo, convert back
+        other = self._ensure_apn(other)
+        if abs(other._base_to_decimal()) < 1e-10:
+            raise ZeroDivisionError("Modulo by zero")
+        
+        decimal_mod = self._base_to_decimal() % other._base_to_decimal()
+        return self._decimal_to_base(decimal_mod)
+
+    def __pow__(self, other):
+        # Convert to decimal, power, convert back
+        other = self._ensure_apn(other)
+        decimal_power = self._base_to_decimal() ** other._base_to_decimal()
+        return self._decimal_to_base(decimal_power)
 
     def __eq__(self, other):
         other = self._ensure_apn(other)
-        # Convert to decimal for comparison
-        return abs(self._to_decimal() - other._to_decimal()) < 1e-10
+        return abs(self._base_to_decimal() - other._base_to_decimal()) < 1e-10
 
-    def _ensure_apn(self, other):
-        return other if isinstance(other, AdvancedPrecisionNumber) else AdvancedPrecisionNumber(other, self.base, self.precision)
-
-    def __add__(self, other):
+    def __lt__(self, other):
         other = self._ensure_apn(other)
-        decimal_sum = self._to_decimal() + other._to_decimal()
-        return self._from_decimal(decimal_sum, self.base)
+        return self._base_to_decimal() < other._base_to_decimal()
 
-    def __sub__(self, other):
+    def __le__(self, other):
         other = self._ensure_apn(other)
-        decimal_diff = self._to_decimal() - other._to_decimal()
-        return self._from_decimal(decimal_diff, self.base)
+        return self._base_to_decimal() <= other._base_to_decimal()
 
-    def __mul__(self, other):
+    def __gt__(self, other):
         other = self._ensure_apn(other)
-        decimal_product = self._to_decimal() * other._to_decimal()
-        result = self._from_decimal(decimal_product, self.base)
-        result.negative = self.negative != other.negative
-        return result
+        return self._base_to_decimal() > other._base_to_decimal()
 
-    def __truediv__(self, other):
+    def __ge__(self, other):
         other = self._ensure_apn(other)
-        if abs(other._to_decimal()) < 1e-10:
-            raise ZeroDivisionError("Division by zero")
-        
-        decimal_quotient = self._to_decimal() / other._to_decimal()
-        result = self._from_decimal(decimal_quotient, self.base)
-        result.negative = self.negative != other.negative
-        return result
+        return self._base_to_decimal() >= other._base_to_decimal()
 
-    def __mod__(self, other):
-        other = self._ensure_apn(other)
-        if abs(other._to_decimal()) < 1e-10:
-            raise ZeroDivisionError("Modulo by zero")
-        
-        decimal_mod = self._to_decimal() % other._to_decimal()
-        return self._from_decimal(decimal_mod, self.base)
-
-    def __pow__(self, other):
-        other = self._ensure_apn(other)
-        decimal_power = self._to_decimal() ** other._to_decimal()
-        result = self._from_decimal(decimal_power, self.base)
-        
-        # Handle sign for integer exponents
-        if other.fractional_digits == [0] * len(other.fractional_digits):
-            result.negative = self.negative and (int(other._to_decimal()) % 2 == 1)
-        
-        return result
-    
+    # Unary operations
     def sqrt(self):
-        return self._from_decimal(math.sqrt(self._to_decimal()), self.base)
+        return self._decimal_to_base(math.sqrt(self._base_to_decimal()))
 
     def sqr(self):
         return self * self
 
     def cube(self):
-        return self ** AdvancedPrecisionNumber('3', self.base, self.precision)
+        return self * self * self
 
     def cube_root(self):
-        return self._from_decimal(self._to_decimal() ** (1/3), self.base)
-
-    def reciprocal(self):
-        return AdvancedPrecisionNumber('1', self.base, self.precision) / self
+        return self._decimal_to_base(self._base_to_decimal() ** (1/3))
 
     def factorial(self):
+        # Only for non-negative integers
         if self.negative or self.fractional_digits != [0] * len(self.fractional_digits):
             raise ValueError("Factorial is only defined for non-negative integers")
-        n = int(self._to_decimal())
-        result = math.factorial(n)  # Use built-in math.factorial for efficiency    
-        return self._from_decimal(result, self.base)
-    
+        
+        n = int(self._base_to_decimal())
+        result = math.factorial(n)
+        return self._decimal_to_base(result)
+
     def log(self, base=None):
         """
-        Calculate logarithm of the number.
-        If base is not specified, defaults to natural logarithm (base e).
+        Calculate logarithm. 
+        If base is not specified, uses natural logarithm.
         """
-        if self.negative or self._to_decimal() <= 0:
+        if self._base_to_decimal() <= 0:
             raise ValueError("Logarithm is only defined for positive numbers")
     
         if base is None:
             # Natural logarithm
-            return self._from_decimal(math.log(self._to_decimal()), self.base)
+            return self._decimal_to_base(math.log(self._base_to_decimal()))
     
         # Logarithm with specified base
-        base = AdvancedPrecisionNumber(base) if not isinstance(base, AdvancedPrecisionNumber) else base
-        return self._from_decimal(
-            math.log(self._to_decimal()) / math.log(base._to_decimal()), 
-            self.base
+        base = self._ensure_apn(base)
+        return self._decimal_to_base(
+            math.log(self._base_to_decimal()) / math.log(base._base_to_decimal())
         )
 
     def inverse(self):
         """
         Calculate the multiplicative inverse (1/x)
         """
-        if abs(self._to_decimal()) < 1e-10:
+        if abs(self._base_to_decimal()) < 1e-10:
             raise ZeroDivisionError("Cannot calculate inverse of zero")
     
-        return self.reciprocal()
+        return self._decimal_to_base(1 / self._base_to_decimal())
             
 def calculate_repl():
     calculation_history = []
