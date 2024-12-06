@@ -1,5 +1,6 @@
 import math
 import fractions
+import sys
 
 class AdvancedPrecisionNumber:
     def __init__(self, value='0', base=10, precision=50):
@@ -9,6 +10,23 @@ class AdvancedPrecisionNumber:
         self.whole_digits = [0]
         self.fractional_digits = [0] * precision
 
+        # Fraction support
+        self.fraction = None
+        
+        # Handle fraction input
+        if fraction is not None:
+            # If fraction is provided, convert it
+            if isinstance(fraction, (int, float, str)):
+                fraction = fractions.Fraction(fraction)
+            
+            if isinstance(fraction, fractions.Fraction):
+                # Store the fraction
+                self.fraction = fraction
+                
+                # Convert fraction to decimal for base conversion
+                decimal_value = float(fraction)
+                value = str(decimal_value)
+        
         # Handle various input types and parsing
         if isinstance(value, AdvancedPrecisionNumber):
             self.base = value.base
@@ -18,7 +36,7 @@ class AdvancedPrecisionNumber:
             self.fractional_digits = value.fractional_digits.copy()
             return
 
-        # String parsing with enhanced base handling
+        # String parsing with enhanced base and fraction handling
         if isinstance(value, str):
             value = value.strip().lower()
             self.negative = value.startswith('-')
@@ -107,7 +125,7 @@ class AdvancedPrecisionNumber:
         return new_num
 
     def __str__(self):
-        # Enhanced string representation
+        # Enhanced string representation with fraction support
         sign = '-' if self.negative else ''
         whole = ''.join(self._digit_to_char(d) for d in self.whole_digits)
         whole = whole.lstrip('0') or '0'
@@ -120,10 +138,27 @@ class AdvancedPrecisionNumber:
         # Base prefix
         base_prefix = {2: '0b', 8: '0o', 10: '', 16: '0x'}.get(self.base, f'[base{self.base}]')
     
+        # Fraction representation
+        if self.fraction:
+            return f"{sign}{base_prefix}{whole} (Fraction: {self.fraction})"
+        
         if frac_digits:
             frac = ''.join(frac_digits)
             return f"{sign}{base_prefix}{whole}.{frac}"
         return f"{sign}{base_prefix}{whole}"
+
+    def as_fraction(self):
+        """
+        Convert the number to a Fraction
+        """
+        # If fraction is already defined, return it
+        if self.fraction:
+            return self.fraction if not self.negative else -self.fraction
+        
+        # Convert decimal representation to fraction
+        decimal_value = self._base_to_decimal()
+        frac = fractions.Fraction(decimal_value).limit_denominator()
+        return frac if not self.negative else -frac
 
     def __abs__(self):
         # Create a copy without negative sign
@@ -141,18 +176,42 @@ class AdvancedPrecisionNumber:
         # Convert to decimal, add, convert back
         other = self._ensure_apn(other)
         decimal_sum = self._base_to_decimal() + other._base_to_decimal()
+        
+        # If both have fractions, add fractions
+        if self.fraction and other.fraction:
+            frac_sum = self.as_fraction() + other.as_fraction()
+            result = self._decimal_to_base(float(frac_sum))
+            result.fraction = frac_sum
+            return result
+        
         return self._decimal_to_base(decimal_sum)
 
     def __sub__(self, other):
         # Convert to decimal, subtract, convert back
         other = self._ensure_apn(other)
         decimal_diff = self._base_to_decimal() - other._base_to_decimal()
+        
+        # If both have fractions, subtract fractions
+        if self.fraction and other.fraction:
+            frac_diff = self.as_fraction() - other.as_fraction()
+            result = self._decimal_to_base(float(frac_diff))
+            result.fraction = frac_diff
+            return result
+        
         return self._decimal_to_base(decimal_diff)
 
     def __mul__(self, other):
         # Convert to decimal, multiply, convert back
         other = self._ensure_apn(other)
         decimal_product = self._base_to_decimal() * other._base_to_decimal()
+        
+        # If both have fractions, multiply fractions
+        if self.fraction and other.fraction:
+            frac_product = self.as_fraction() * other.as_fraction()
+            result = self._decimal_to_base(float(frac_product))
+            result.fraction = frac_product
+            return result
+        
         return self._decimal_to_base(decimal_product)
 
     def __truediv__(self, other):
@@ -162,7 +221,63 @@ class AdvancedPrecisionNumber:
             raise ZeroDivisionError("Division by zero")
         
         decimal_quotient = self._base_to_decimal() / other._base_to_decimal()
+        
+        # If both have fractions, divide fractions
+        if self.fraction and other.fraction:
+            try:
+                frac_quotient = self.as_fraction() / other.as_fraction()
+                result = self._decimal_to_base(float(frac_quotient))
+                result.fraction = frac_quotient
+                return result
+            except ZeroDivisionError:
+                raise ZeroDivisionError("Division by zero")
+        
         return self._decimal_to_base(decimal_quotient)
+
+    def to_fraction(self, limit_denominator=None):
+        """
+        Convert the number to a Fraction with optional denominator limit
+        Handles various edge cases and input validations
+    
+        Args:
+            limit_denominator (int, optional): Maximum denominator for approximation
+    
+        Raises:
+            ValueError: For invalid input types or excessive precision
+            OverflowError: For values too large to convert
+        """
+        # Check if limit_denominator is valid
+        if limit_denominator is not None:
+            if not isinstance(limit_denominator, int):
+                raise ValueError("limit_denominator must be an integer")
+            if limit_denominator <= 0:
+                raise ValueError("limit_denominator must be a positive integer")
+    
+        try:
+            # Convert to decimal value with error checking
+            decimal_value = self._base_to_decimal()
+        
+            # Check for extremely large values that might cause issues
+            if abs(decimal_value) > sys.float_info.max:
+                raise OverflowError("Number too large to convert to fraction")
+        
+            # Handle very small values near zero
+            if abs(decimal_value) < sys.float_info.min:
+                return fractions.Fraction(0)
+        
+            # Perform fraction conversion
+            if limit_denominator is not None:
+                frac = fractions.Fraction(decimal_value).limit_denominator(limit_denominator)
+            else:
+                frac = fractions.Fraction(decimal_value)
+        
+            # Apply the sign if the number is negative
+            return -frac if self.negative else frac
+    
+        except OverflowError:
+            raise
+        except Exception as e:
+            raise ValueError(f"Could not convert to fraction: {e}")
 
     def __mod__(self, other):
         # Convert to decimal, modulo, convert back
