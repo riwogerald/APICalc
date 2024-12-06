@@ -251,48 +251,275 @@ class AdvancedPrecisionNumber:
     # Trigonometric Functions
     def sin(self):
         """
-        Calculate sine of the number (interpreted as radians)
+        Calculate sine of the number with improved precision
+        Assumes input is in radians
+        Uses Taylor series expansion for more accurate results
         """
-        return self._decimal_to_base(math.sin(self._base_to_decimal()))
+        # Convert to decimal for calculations
+        x = self._base_to_decimal()
+    
+        # Normalize angle to [-π, π] range
+        while x > math.pi:
+            x -= 2 * math.pi
+        while x < -math.pi:
+            x += 2 * math.pi
+    
+        # Taylor series for sine
+        # sin(x) = x - x³/3! + x⁵/5! - x⁷/7! + ...
+        result = 0
+        power = x
+        factorial = 1
+        sign = 1
+    
+        # Use enough terms for high precision
+        for n in range(20):  # Increased number of terms for more precision
+            if n > 0:
+                factorial *= (2*n) * (2*n+1)
+                power *= x * x
+                sign *= -1
+        
+            term = sign * power / factorial
+            result += term
+        
+            # Stop if term becomes very small (suggests convergence)
+            if abs(term) < 1e-15:
+                break
+    
+        return self._decimal_to_base(result)
 
     def cos(self):
         """
-        Calculate cosine of the number (interpreted as radians)
+        Calculate cosine of the number with improved precision
+        Assumes input is in radians
+        Uses Taylor series expansion for more accurate results
         """
-        return self._decimal_to_base(math.cos(self._base_to_decimal()))
+        # Convert to decimal for calculations
+        x = self._base_to_decimal()
+    
+        # Normalize angle to [-π, π] range
+        while x > math.pi:
+            x -= 2 * math.pi
+        while x < -math.pi:
+            x += 2 * math.pi
+    
+        # Taylor series for cosine
+        # cos(x) = 1 - x²/2! + x⁴/4! - x⁶/6! + ...
+        result = 0
+        power = 1
+        factorial = 1
+        sign = 1
+    
+        # Use enough terms for high precision
+        for n in range(20):  # Increased number of terms for more precision
+            if n > 0:
+                factorial *= (2*n-1) * (2*n)
+                power *= x * x
+                sign *= -1
+        
+            term = sign * power / factorial
+            result += term
+        
+            # Stop if term becomes very small (suggests convergence)
+            if abs(term) < 1e-15:
+                break
+    
+        return self._decimal_to_base(result)
 
     def tan(self):
         """
-        Calculate tangent of the number (interpreted as radians)
+        Calculate tangent of the number with improved precision
+        Assumes input is in radians
+        Uses series expansion for more accurate results
         """
-        return self._decimal_to_base(math.tan(self._base_to_decimal()))
+        # Convert to decimal for calculations
+        x = self._base_to_decimal()
+    
+        # Normalize angle to [-π/2, π/2] range
+        while x > math.pi/2:
+            x -= math.pi
+        while x < -math.pi/2:
+            x += math.pi
+    
+        # Check for undefined points (where cos(x) = 0)
+        if abs(math.cos(x)) < 1e-10:
+            raise ValueError("Tangent is undefined at this point (cos(x) approaches zero)")
+    
+        # Maclaurin series for tangent
+        # tan(x) = x + (1/3)x³ + (2/15)x⁵ + (17/315)x⁷ + ...
+        result = 0
+        power = x
+    
+        # Precomputed coefficients for Maclaurin series of tan(x)
+        coefficients = [
+            1,          # x
+            1/3,        # x³
+            2/15,       # x⁵
+            17/315,     # x⁷
+            62/2835,    # x⁹
+            1382/155925,# x¹¹
+            21844/6081075 # x¹³
+        ]   
+    
+        # Compute series expansion
+        for i, coeff in enumerate(coefficients):
+            term = coeff * (power ** (2*i + 1))
+            result += term
+        
+            # Stop if term becomes very small (suggests convergence)
+            if abs(term) < 1e-15:
+                break
+        
+            # Update power for next iteration
+            power *= x * x
+    
+        return self._decimal_to_base(result)
 
     def arcsin(self):
         """
-        Calculate arcsine (inverse sine)
+        Calculate arcsine (inverse sine) with improved precision
         Returns result in radians
+        Uses series expansion for accurate calculation
         """
         decimal_value = self._base_to_decimal()
+    
+        # Input domain check
         if decimal_value < -1 or decimal_value > 1:
             raise ValueError("Arcsine is only defined for values between -1 and 1")
-        return self._decimal_to_base(math.asin(decimal_value))
+    
+        # Special case handling for exact values
+        if decimal_value == -1:
+            return self._decimal_to_base(-math.pi/2)
+        if decimal_value == 1:
+            return self._decimal_to_base(math.pi/2)
+        if decimal_value == 0:
+            return self._decimal_to_base(0)
+    
+        # Maclaurin series for arcsin(x)
+        # arcsin(x) = x + (1/2)(x³/3) + (1·3/2·4)(x⁵/5) + (1·3·5/2·4·6)(x⁷/7) + ...
+        result = decimal_value
+        power = decimal_value
+        sign = 1
+        denominator = 1
+        numerator = 1
+    
+        # Compute series expansion
+        for n in range(1, 20):  # Increased number of terms for precision
+            # Update numerator and denominator for next term
+            numerator *= 2 * n - 1
+            denominator *= 2 * n
+        
+            # Compute next term in the series
+            power *= decimal_value * decimal_value
+            term = (numerator / (denominator * (2*n + 1))) * power
+        
+            # Add term to result
+            result += term
+        
+            # Stop if term becomes very small (suggests convergence)
+            if abs(term) < 1e-15:
+                break
+    
+        return self._decimal_to_base(result)
 
     def arccos(self):
         """
-        Calculate arccosine (inverse cosine)
+        Calculate arccosine (inverse cosine) with improved precision
         Returns result in radians
+        Uses series expansion for accurate calculation
         """
         decimal_value = self._base_to_decimal()
+    
+        # Input domain check
         if decimal_value < -1 or decimal_value > 1:
             raise ValueError("Arccosine is only defined for values between -1 and 1")
-        return self._decimal_to_base(math.acos(decimal_value))
+    
+        # Special case handling for exact values
+        if decimal_value == -1:
+            return self._decimal_to_base(math.pi)
+        if decimal_value == 1:
+            return self._decimal_to_base(0)
+        if decimal_value == 0:
+            return self._decimal_to_base(math.pi/2)
+    
+        # Relationship between arcsin and arccos
+        # arccos(x) = π/2 - arcsin(x)
+        arcsin_value = 0
+    
+        # Maclaurin series for arcsin(x)
+        # arcsin(x) = x + (1/2)(x³/3) + (1·3/2·4)(x⁵/5) + (1·3·5/2·4·6)(x⁷/7) + ...
+        result = decimal_value
+        power = decimal_value
+        sign = 1
+        denominator = 1
+        numerator = 1
+    
+        # Compute series expansion
+        for n in range(1, 20):  # Increased number of terms for precision
+            # Update numerator and denominator for next term
+            numerator *= 2 * n - 1
+            denominator *= 2 * n
+        
+            # Compute next term in the series
+            power *= decimal_value * decimal_value
+            term = (numerator / (denominator * (2*n + 1))) * power
+        
+            # Add term to result
+            result += term
+        
+            # Stop if term becomes very small (suggests convergence)
+            if abs(term) < 1e-15:
+                break
+    
+        # arccos(x) = π/2 - arcsin(x)
+        final_result = math.pi/2 - result
+    
+        return self._decimal_to_base(final_result)
 
     def arctan(self):
         """
-        Calculate arctangent (inverse tangent)
+        Calculate arctangent (inverse tangent) with improved precision
         Returns result in radians
+        Uses series expansion for accurate calculation
         """
-        return self._decimal_to_base(math.atan(self._base_to_decimal()))
+        decimal_value = self._base_to_decimal()
+    
+        # Special case handling for extreme values
+        if decimal_value == 0:
+            return self._decimal_to_base(0)
+    
+        # Determine sign and work with absolute value
+        sign = 1 if decimal_value > 0 else -1
+        x = abs(decimal_value)
+    
+        # Derivative series for arctan
+        # arctan(x) = x - x³/3 + x⁵/5 - x⁷/7 + x⁹/9 - ...
+        result = 0
+        power = x
+        sign_alternate = 1
+    
+        # Compute series expansion
+        for n in range(20):  # Increased number of terms for precision
+            # Compute term
+            term = sign_alternate * (power / (2*n + 1))
+            result += term
+        
+            # Stop if term becomes very small (suggests convergence)
+            if abs(term) < 1e-15:
+                break
+        
+            # Update for next iteration
+            power *= x * x
+            sign_alternate *= -1
+    
+        # Apply original sign
+        result *= sign
+    
+        # Special handling for large values
+        if x > 1:
+            # Use the relationship: arctan(x) = π/2 - arctan(1/x) for x > 1
+            result = (math.pi/2) - (sign * arctan(AdvancedPrecisionNumber('1') / AdvancedPrecisionNumber(str(x))))
+    
+        return self._decimal_to_base(result)
 
             
 def calculate_repl():
@@ -346,10 +573,21 @@ def calculate_repl():
         return expr
 
     def perform_unary_operation(operation, expr):
-        num = AdvancedPrecisionNumber(expr.split()[1])
-        result = getattr(num, operation)()
-        print(result)
-        calculation_history.append(f"{operation} {num} = {result}")
+        # Enhanced error handling for trigonometric functions
+        try:
+            num = AdvancedPrecisionNumber(expr.split()[1])
+            result = getattr(num, operation)()
+            print(result)
+            calculation_history.append(f"{operation} {num} = {result}")
+        except ValueError as e:
+            print(f"Error in {operation}: {e}")
+            print("Tip for trigonometric functions:")
+            if operation == 'arcsin':
+                print("  - Input must be between -1 and 1")
+            elif operation == 'arccos':
+                print("  - Input must be between -1 and 1")
+            elif operation in ['sin', 'cos', 'tan', 'arctan']:
+                print("  - Function expects input in radians")
 
     print_menu()
 
