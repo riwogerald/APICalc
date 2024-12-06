@@ -247,6 +247,53 @@ class AdvancedPrecisionNumber:
             raise ZeroDivisionError("Cannot calculate inverse of zero")
     
         return self._decimal_to_base(1 / self._base_to_decimal())
+
+    # Trigonometric Functions
+    def sin(self):
+        """
+        Calculate sine of the number (interpreted as radians)
+        """
+        return self._decimal_to_base(math.sin(self._base_to_decimal()))
+
+    def cos(self):
+        """
+        Calculate cosine of the number (interpreted as radians)
+        """
+        return self._decimal_to_base(math.cos(self._base_to_decimal()))
+
+    def tan(self):
+        """
+        Calculate tangent of the number (interpreted as radians)
+        """
+        return self._decimal_to_base(math.tan(self._base_to_decimal()))
+
+    def arcsin(self):
+        """
+        Calculate arcsine (inverse sine)
+        Returns result in radians
+        """
+        decimal_value = self._base_to_decimal()
+        if decimal_value < -1 or decimal_value > 1:
+            raise ValueError("Arcsine is only defined for values between -1 and 1")
+        return self._decimal_to_base(math.asin(decimal_value))
+
+    def arccos(self):
+        """
+        Calculate arccosine (inverse cosine)
+        Returns result in radians
+        """
+        decimal_value = self._base_to_decimal()
+        if decimal_value < -1 or decimal_value > 1:
+            raise ValueError("Arccosine is only defined for values between -1 and 1")
+        return self._decimal_to_base(math.acos(decimal_value))
+
+    def arctan(self):
+        """
+        Calculate arctangent (inverse tangent)
+        Returns result in radians
+        """
+        return self._decimal_to_base(math.atan(self._base_to_decimal()))
+
             
 def calculate_repl():
     calculation_history = []
@@ -273,6 +320,12 @@ def calculate_repl():
         print(f"{'Logarithm':^20}{'log 4' or 'log 4 2':^25}")
         print(f"{'Inverse':^20}{'inverse 4':^25}")
         print(f"{'Base Conversion':^20}{'0b1010 or 0x10':^25}")
+        print(f"{'Sine':^20}{'sin 1':^25}")
+        print(f"{'Cosine':^20}{'cos 1':^25}")
+        print(f"{'Tangent':^20}{'tan 1':^25}")
+        print(f"{'Arcsine':^20}{'arcsin 0.5':^25}")
+        print(f"{'Arccosine':^20}{'arccos 0.5':^25}")
+        print(f"{'Arctangent':^20}{'arctan 1':^25}")
         print("═" * 45)
         print("Type 'menu' to show this help, 'quit' to exit")
         print("═" * 45)
@@ -321,18 +374,25 @@ def calculate_repl():
 
             unary_ops = {
                 'factorial': 'factorial',
+                '!': 'factorial',
                 'sqrt': 'sqrt',
                 'sqr': 'sqr',
                 'cube': 'cube',
                 'cube_root': 'cube_root',
                 'reciprocal': 'reciprocal',
                 'log': 'log',      
-                'inverse': 'inverse'  
-                }
+                'inverse': 'inverse',  
+                'sin': 'sin',
+                'cos': 'cos',
+                'tan': 'tan',
+                'arcsin': 'arcsin',
+                'arccos': 'arccos',
+                'arctan': 'arctan'
+            }
             
             for prefix, method in unary_ops.items():
-                if expr.startswith(f'{prefix} ') or (method == 'factorial' and expr.endswith('!')):
-                    num_expr = expr.split()[1] if not expr.endswith('!') else expr[:-1]
+                if expr.startswith(f'{prefix} '):
+                    num_expr = expr.split()[1]
                     perform_unary_operation(method, f'{prefix} {num_expr}')
                     break
             else:
