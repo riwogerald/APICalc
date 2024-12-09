@@ -1,4 +1,3 @@
-import math
 import fractions
 import sys
 import warnings
@@ -471,15 +470,29 @@ class AdvancedPrecisionNumber:
         """
         Calculate logarithm using Taylor series expansion.
         If base is not specified, calculates natural logarithm.
-    
-        Implemented using the Taylor series: 
-        ln(1+x) = x - x²/2 + x³/3 - x⁴/4 + ...
+        Implemented without using math library.
         """
         decimal_value = self._base_to_decimal()
-    
+
         if decimal_value <= 0:
             raise ValueError("Logarithm is only defined for positive numbers")
-    
+
+        # Custom e calculation using Taylor series
+        def calculate_e(terms=50):
+            """
+            Calculate e using Taylor series: e = 1 + 1/1! + 1/2! + 1/3! + ...
+            """
+            e = 0
+            factorial = 1
+            for n in range(terms):
+                if n > 0:
+                    factorial *= n
+                e += 1 / factorial
+            return e
+
+        # Precalculate e once
+        E = calculate_e()
+
         # Special case for base 1
         if base is not None:
             base = self._ensure_apn(base)
@@ -487,7 +500,7 @@ class AdvancedPrecisionNumber:
                 raise ValueError("Base cannot be zero or near zero")
             if base._base_to_decimal() == 1:
                 raise ValueError("Logarithm with base 1 is undefined")
-    
+
         def ln(x):
             """
             Calculate natural logarithm using Taylor series
@@ -498,13 +511,13 @@ class AdvancedPrecisionNumber:
                 raise ValueError("Natural log is undefined for non-positive numbers")
         
             # Transformation to bring x close to 1
-            while x > 2:
-                x /= math.e
-            while x < 0.5:
-                x *= math.e
-        
-            # Adjust for the transformations
             adjustment = 0
+            while x > 2:
+                x /= E
+                adjustment += 1
+            while x < 0.5:
+                x *= E
+                adjustment -= 1
         
             # Taylor series expansion
             y = (x - 1) / (x + 1)
@@ -522,11 +535,11 @@ class AdvancedPrecisionNumber:
                 power *= y * y
         
             return 2 * result + adjustment
-    
+
         # Natural logarithm calculation
         if base is None:
             return self._decimal_to_base(ln(decimal_value))
-    
+
         # Change of base formula: log_b(x) = ln(x) / ln(b)
         return self._decimal_to_base(
             ln(decimal_value) / ln(base._base_to_decimal())
@@ -541,6 +554,7 @@ class AdvancedPrecisionNumber:
     
         return self._decimal_to_base(1 / self._base_to_decimal())
 
+   
     # Trigonometric Functions
     def sin(self):
         """
@@ -551,15 +565,32 @@ class AdvancedPrecisionNumber:
         # Convert to decimal for calculations
         x = self._base_to_decimal()
     
+        # Custom pi calculation using Leibniz-like series
+        def calculate_pi(terms=50):
+            """
+            Calculate π using a convergent series approximation
+            Uses a series that converges to π/4
+            """
+            pi = 0
+            sign = 1
+            for k in range(terms):
+                pi += sign * (4.0 / (2*k + 1))
+                sign *= -1
+            return pi * 4
+
+        # Custom angle normalization without math.pi
+        PI = calculate_pi()
+        TWO_PI = PI * 2
+    
         # Normalize angle to [-2π, 2π] range for efficiency
         # Equivalent to multiple full rotations cancel out
-        x = x % (2 * math.pi)
+        x = x % TWO_PI
     
         # Reduce range to [-π, π] for better series convergence
-        if x > math.pi:
-            x -= 2 * math.pi
-        elif x < -math.pi:
-            x += 2 * math.pi
+        if x > PI:
+            x -= TWO_PI
+        elif x < -PI:
+            x += TWO_PI
     
         # Taylor series for sine: 
         # sin(x) = x - x³/3! + x⁵/5! - x⁷/7! + x⁹/9! - ...
@@ -598,51 +629,76 @@ class AdvancedPrecisionNumber:
         # Convert to decimal for calculations
         x = self._base_to_decimal()
     
+        # Custom pi calculation using Leibniz-like series
+        def calculate_pi(terms=50):
+            """
+            Calculate π using a convergent series approximation
+            Uses a series that converges to π/4
+            """
+            pi = 0
+            sign = 1
+            for k in range(terms):
+                pi += sign * (4.0 / (2*k + 1))
+                sign *= -1
+            return pi * 4
+
+        # Custom angle normalization without math.pi
+        PI = calculate_pi()
+        TWO_PI = PI * 2
+    
         # Normalize angle to [-π, π] range
-        while x > math.pi:
-            x -= 2 * math.pi
-        while x < -math.pi:
-            x += 2 * math.pi
+        x = x % TWO_PI
+        while x > PI:
+            x -= TWO_PI
+        while x < -PI:
+            x += TWO_PI
     
         # Taylor series for cosine
         # cos(x) = 1 - x²/2! + x⁴/4! - x⁶/6! + ...
-        result = 0
-        power = 1
-        factorial = 1
-        sign = 1
+        result = 1  # Start with 1 instead of 0
+        power = x * x
+        factorial = 2
+        sign = -1
     
         # Use enough terms for high precision
-        for n in range(20):  # Increased number of terms for more precision
-            if n > 0:
-                factorial *= (2*n-1) * (2*n)
-                power *= x * x
-                sign *= -1
-        
-            term = sign * power / factorial
+        for n in range(1, 20):  # Increased number of terms for more precision
+            # Compute next term
+            term = sign * (power / factorial)
             result += term
+        
+            # Alternate sign for series
+            sign *= -1
+        
+            # Update power and factorial for next iteration
+            power *= x * x
+            factorial *= (2*n + 1) * (2*n + 2)
         
             # Stop if term becomes very small (suggests convergence)
             if abs(term) < 1e-15:
                 break
     
         return self._decimal_to_base(result)
-
+    
     def tan(self):
         """
         Calculate tangent of the number with improved precision
         Assumes input is in radians
-        Uses series expansion and sin/cos methods for calculation
+        Uses series expansion and internal sin/cos methods for calculation
         """
         # Convert to decimal for calculations
         x = self._base_to_decimal()
     
-        # Normalize angle to [-π/2, π/2] range
-        while x > math.pi/2:
-            x -= math.pi
-        while x < -math.pi/2:
-            x += math.pi
+        # Define PI constant without math module
+        PI = 3.141592653589793
+        HALF_PI = PI / 2
     
-        # Calculate sin and cos 
+        # Normalize angle to [-π/2, π/2] range
+        while x > HALF_PI:
+            x -= PI
+        while x < -HALF_PI:
+            x += PI
+    
+        # Calculate sin and cos using internal methods
         sin_x = self._decimal_to_base(x).sin()
         cos_x = self._decimal_to_base(x).cos()
     
@@ -665,13 +721,14 @@ class AdvancedPrecisionNumber:
         if decimal_value < -1 or decimal_value > 1:
             raise ValueError("Arcsine is only defined for values between -1 and 1")
     
+        # High-precision constants without math module
+        PI_HALF = 1.5707963267948966  # π/2 to high precision
+    
         # Special case handling for exact values
         if decimal_value == -1:
-            # Represents -π/2 without using math.pi
-            return self._decimal_to_base(-1.5707963267948966)  # -π/2 to high precision
+            return self._decimal_to_base(-PI_HALF)
         if decimal_value == 1:
-            # Represents π/2 without using math.pi
-            return self._decimal_to_base(1.5707963267948966)  # π/2 to high precision
+            return self._decimal_to_base(PI_HALF)
         if decimal_value == 0:
             return self._decimal_to_base(0)
     
@@ -679,7 +736,6 @@ class AdvancedPrecisionNumber:
         # arcsin(x) = x + (1/2)(x³/3) + (1·3/2·4)(x⁵/5) + (1·3·5/2·4·6)(x⁷/7) + ...
         result = decimal_value
         power = decimal_value
-        sign = 1
         denominator = 1
         numerator = 1
     
@@ -709,51 +765,66 @@ class AdvancedPrecisionNumber:
         Uses series expansion for accurate calculation
         """
         decimal_value = self._base_to_decimal()
-    
+
         # Input domain check
         if decimal_value < -1 or decimal_value > 1:
             raise ValueError("Arccosine is only defined for values between -1 and 1")
-    
+
+        # Custom pi calculation using Leibniz-like series
+        def calculate_pi(terms=50):
+            """
+            Calculate π using a convergent series approximation
+            Uses a series that converges to π/4
+            """
+            pi = 0
+            sign = 1
+            for k in range(terms):
+                pi += sign * (4.0 / (2*k + 1))
+                sign *= -1
+            return pi * 4
+
+        # High-precision constants
+        PI = calculate_pi()
+        HALF_PI = PI / 2
+
         # Special case handling for exact values
         if decimal_value == -1:
-            return self._decimal_to_base(math.pi)
+            return self._decimal_to_base(PI)
         if decimal_value == 1:
             return self._decimal_to_base(0)
         if decimal_value == 0:
-            return self._decimal_to_base(math.pi/2)
-    
+            return self._decimal_to_base(HALF_PI)
+
         # Relationship between arcsin and arccos
         # arccos(x) = π/2 - arcsin(x)
-        arcsin_value = 0
     
         # Maclaurin series for arcsin(x)
         # arcsin(x) = x + (1/2)(x³/3) + (1·3/2·4)(x⁵/5) + (1·3·5/2·4·6)(x⁷/7) + ...
         result = decimal_value
         power = decimal_value
-        sign = 1
         denominator = 1
         numerator = 1
-    
+
         # Compute series expansion
         for n in range(1, 20):  # Increased number of terms for precision
             # Update numerator and denominator for next term
             numerator *= 2 * n - 1
             denominator *= 2 * n
-        
+    
             # Compute next term in the series
             power *= decimal_value * decimal_value
             term = (numerator / (denominator * (2*n + 1))) * power
-        
+    
             # Add term to result
             result += term
-        
+    
             # Stop if term becomes very small (suggests convergence)
             if abs(term) < 1e-15:
                 break
-    
+
         # arccos(x) = π/2 - arcsin(x)
-        final_result = math.pi/2 - result
-    
+        final_result = HALF_PI - result
+
         return self._decimal_to_base(final_result)
 
     def arctan(self):
