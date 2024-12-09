@@ -10,83 +10,56 @@ class AdvancedPrecisionNumber:
         'extreme': 1000     # For scientific/mathematical computations
     }
 
-    def __init__(self, value='0', base=10, precision_mode='standard', max_precision=1000):
+    def __init__(self, value='0', base=10, precision_mode='standard', max_precision=1000, fraction=None):
         # Precision configuration
         self.precision = self.PRECISION_MODES.get(precision_mode, precision_mode)
         self.max_precision = max_precision
         self.precision_loss_warning = False
+    
+        # Initialize base and fraction
         self.base = base
         self.negative = False
         self.whole_digits = [0]
         self.fractional_digits = [0] * self.precision
-
-        # Fraction support
         self.fraction = None
 
         try:
+            # Handle fraction input first
+            if fraction is not None:
+                # If fraction is provided, convert it
+                if isinstance(fraction, (int, float, str)):
+                    fraction = fractions.Fraction(fraction)
+            
+                if isinstance(fraction, fractions.Fraction):
+                    # Store the fraction
+                    self.fraction = fraction
+                
+                    # Convert fraction to decimal for base conversion
+                    decimal_value = float(fraction)
+                    value = str(decimal_value)
+
+            # Copy constructor handling
+            if isinstance(value, AdvancedPrecisionNumber):
+                self.base = value.base
+                self.precision = value.precision
+                self.negative = value.negative
+                self.whole_digits = value.whole_digits.copy()
+                self.fractional_digits = value.fractional_digits.copy()
+                self.fraction = value.fraction
+                return
+
+            # Parse input
             self._parse_input(value)
+
         except Exception as e:
             warnings.warn(f"Potential precision issue: {e}")
             self.precision_loss_warning = True
-        
-        # Handle fraction input
-        if fraction is not None:
-            # If fraction is provided, convert it
-            if isinstance(fraction, (int, float, str)):
-                fraction = fractions.Fraction(fraction)
-            
-            if isinstance(fraction, fractions.Fraction):
-                # Store the fraction
-                self.fraction = fraction
-                
-                # Convert fraction to decimal for base conversion
-                decimal_value = float(fraction)
-                value = str(decimal_value)
-        
-        # Handle various input types and parsing
-        if isinstance(value, AdvancedPrecisionNumber):
-            self.base = value.base
-            self.precision = value.precision
-            self.negative = value.negative
-            self.whole_digits = value.whole_digits.copy()
-            self.fractional_digits = value.fractional_digits.copy()
-            return
-
-        # String parsing with enhanced base and fraction handling
-        if isinstance(value, str):
-            value = value.strip().lower()
-            self.negative = value.startswith('-')
-            value = value.lstrip('-+')
-
-            # Base detection
-            if value.startswith('0b'):  # Binary
-                base = 2
-                value = value[2:]
-            elif value.startswith('0x'):  # Hex
-                base = 16
-                value = value[2:]
-            elif value.startswith('0o'):  # Octal
-                base = 8
-                value = value[2:]
-            
-            self.base = base
-
-            # Split whole and fractional parts
-            parts = value.split('.')
-            whole = parts[0] or '0'
-            fractional = parts[1] if len(parts) > 1 else ''
-
-            # Convert digits
-            self.whole_digits = [self._char_to_digit(c) for c in whole.replace('_', '')]
-            self.fractional_digits = [self._char_to_digit(c) for c in fractional.replace('_', '')]
-            
-            # Trim or pad fractional digits
-            self.fractional_digits = self.fractional_digits[:self.precision]
-            while len(self.fractional_digits) < self.precision:
-                self.fractional_digits.append(0)
     
     def _parse_input(self, value):
         """Enhanced input parsing with additional validation"""
+        # Set a default base before any potential base detection
+        base = 10
+
         if isinstance(value, AdvancedPrecisionNumber):
             # Copy constructor logic remains the same
             self.base = value.base
@@ -112,7 +85,7 @@ class AdvancedPrecisionNumber:
             elif value.startswith('0o'):  # Octal
                 base = 8
                 value = value[2:]
-            
+        
             self.base = base
 
             # Split whole and fractional parts
@@ -123,7 +96,7 @@ class AdvancedPrecisionNumber:
             # Convert digits with overflow check
             whole_digits = [self._char_to_digit(c) for c in whole.replace('_', '')]
             frac_digits = [self._char_to_digit(c) for c in fractional.replace('_', '')]
-            
+        
             # Check for potential precision loss
             if len(whole_digits) > self.precision or len(frac_digits) > self.precision:
                 warnings.warn(f"Input exceeds current precision: {len(whole_digits)} whole digits, {len(frac_digits)} fractional digits")
@@ -131,7 +104,7 @@ class AdvancedPrecisionNumber:
 
             self.whole_digits = whole_digits
             self.fractional_digits = frac_digits[:self.precision]
-            
+        
             # Pad fractional digits if needed
             while len(self.fractional_digits) < self.precision:
                 self.fractional_digits.append(0)
@@ -209,17 +182,14 @@ class AdvancedPrecisionNumber:
         return new_num
 
     def __str__(self):
-        """Enhanced string representation with precision warning"""
-        base_str = super().__str__()
-        if self.precision_loss_warning:
-            return f"{base_str} [PRECISION WARNING]"
-        return base_str
-        
-        # Enhanced string representation with fraction support
+        """Enhanced string representation with precision warning and fraction support"""
+        # Determine sign
         sign = '-' if self.negative else ''
+    
+        # Convert whole digits to string
         whole = ''.join(self._digit_to_char(d) for d in self.whole_digits)
         whole = whole.lstrip('0') or '0'
-        
+    
         # Trim trailing zeros from fractional part
         frac_digits = [self._digit_to_char(d) for d in self.fractional_digits]
         while frac_digits and frac_digits[-1] == '0':
@@ -228,14 +198,22 @@ class AdvancedPrecisionNumber:
         # Base prefix
         base_prefix = {2: '0b', 8: '0o', 10: '', 16: '0x'}.get(self.base, f'[base{self.base}]')
     
-        # Fraction representation
+        # Fraction representation takes precedence
         if self.fraction:
             return f"{sign}{base_prefix}{whole} (Fraction: {self.fraction})"
-        
+    
+        # Standard representation with optional fractional part
         if frac_digits:
             frac = ''.join(frac_digits)
-            return f"{sign}{base_prefix}{whole}.{frac}"
-        return f"{sign}{base_prefix}{whole}"
+            result = f"{sign}{base_prefix}{whole}.{frac}"
+        else:
+            result = f"{sign}{base_prefix}{whole}"
+    
+        # Append precision warning if applicable
+        if self.precision_loss_warning:
+            result += " [PRECISION WARNING]"
+    
+        return result
 
     def as_fraction(self):
         """
