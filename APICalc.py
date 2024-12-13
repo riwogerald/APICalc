@@ -11,12 +11,10 @@ class AdvancedPrecisionNumber:
     }
 
     def __init__(self, value='0', base=10, precision_mode='standard', max_precision=1000, fraction=None):
-        # Precision configuration
+        # Initialize basic attributes directly
         self.precision = self.PRECISION_MODES.get(precision_mode, precision_mode)
         self.max_precision = max_precision
         self.precision_loss_warning = False
-    
-        # Initialize base and fraction
         self.base = base
         self.negative = False
         self.whole_digits = [0]
@@ -26,42 +24,28 @@ class AdvancedPrecisionNumber:
         try:
             # Handle fraction input first
             if fraction is not None:
-                # If fraction is provided, convert it
                 if isinstance(fraction, (int, float, str)):
                     fraction = fractions.Fraction(fraction)
             
                 if isinstance(fraction, fractions.Fraction):
-                    # Store the fraction
                     self.fraction = fraction
-                
-                    # Convert fraction to decimal for base conversion
                     decimal_value = float(fraction)
                     value = str(decimal_value)
 
-            # Copy constructor handling
-            if isinstance(value, AdvancedPrecisionNumber):
-                self.base = value.base
-                self.precision = value.precision
-                self.negative = value.negative
-                self.whole_digits = value.whole_digits.copy()
-                self.fractional_digits = value.fractional_digits.copy()
-                self.fraction = value.fraction
-                return
-
             # Parse input
-            self._parse_input(value)
+            if isinstance(value, AdvancedPrecisionNumber):
+                self._copy_from(value)
+            else:
+                self._parse_input(value)
 
         except Exception as e:
             warnings.warn(f"Potential precision issue: {e}")
             self.precision_loss_warning = True
     
     def _parse_input(self, value):
-        """Enhanced input parsing with additional validation"""
-        # Set a default base before any potential base detection
         base = 10
 
         if isinstance(value, AdvancedPrecisionNumber):
-            # Copy constructor logic remains the same
             self.base = value.base
             self.precision = value.precision
             self.negative = value.negative
@@ -69,35 +53,31 @@ class AdvancedPrecisionNumber:
             self.fractional_digits = value.fractional_digits.copy()
             return
 
-        # Existing string parsing logic
         if isinstance(value, str):
             value = value.strip().lower()
             self.negative = value.startswith('-')
             value = value.lstrip('-+')
 
             # Base detection
-            if value.startswith('0b'):  # Binary
+            if value.startswith('0b'):
                 base = 2
                 value = value[2:]
-            elif value.startswith('0x'):  # Hex
+            elif value.startswith('0x'):
                 base = 16
                 value = value[2:]
-            elif value.startswith('0o'):  # Octal
+            elif value.startswith('0o'):
                 base = 8
                 value = value[2:]
         
             self.base = base
 
-            # Split whole and fractional parts
             parts = value.split('.')
             whole = parts[0] or '0'
             fractional = parts[1] if len(parts) > 1 else ''
 
-            # Convert digits with overflow check
             whole_digits = [self._char_to_digit(c) for c in whole.replace('_', '')]
             frac_digits = [self._char_to_digit(c) for c in fractional.replace('_', '')]
         
-            # Check for potential precision loss
             if len(whole_digits) > self.precision or len(frac_digits) > self.precision:
                 warnings.warn(f"Input exceeds current precision: {len(whole_digits)} whole digits, {len(frac_digits)} fractional digits")
                 self._increase_precision()
@@ -105,12 +85,10 @@ class AdvancedPrecisionNumber:
             self.whole_digits = whole_digits
             self.fractional_digits = frac_digits[:self.precision]
         
-            # Pad fractional digits if needed
             while len(self.fractional_digits) < self.precision:
                 self.fractional_digits.append(0)
 
     def _increase_precision(self):
-        """Dynamically increase precision"""
         new_precision = min(self.precision * 2, self.max_precision)
         if new_precision > self.precision:
             self.precision = new_precision
@@ -127,7 +105,6 @@ class AdvancedPrecisionNumber:
             warnings.warn("Number is extremely close to zero, precision may be compromised")
 
     def _char_to_digit(self, char):
-        # Convert character to numeric value
         if char.isdigit():
             digit = int(char)
             if digit >= self.base:
@@ -140,28 +117,44 @@ class AdvancedPrecisionNumber:
         return digit
 
     def _digit_to_char(self, digit):
-        # Convert numeric value to character
         if 0 <= digit < 10:
             return str(digit)
         if 10 <= digit < 36:
             return chr(digit - 10 + ord('a'))
         raise ValueError(f"Cannot represent digit {digit} in base {self.base}")
-
+    
+    def _abs_compare(self, other):
+        if len(self.whole_digits) != len(other.whole_digits):
+            return len(self.whole_digits) - len(other.whole_digits)
+        
+        for d1, d2 in zip(self.whole_digits, other.whole_digits):
+            if d1 != d2:
+                return d1 - d2
+        
+        for d1, d2 in zip(self.fractional_digits, other.fractional_digits):
+            if d1 != d2:
+                return d1 - d2
+        
+        return 0
+          
     def _base_to_decimal(self):
-        # Convert current representation to decimal
+        # Reimplemented to maintain higher precision
         whole = sum(digit * (self.base ** power) 
                     for power, digit in enumerate(reversed(self.whole_digits)))
         frac = sum(digit * (self.base ** -(power+1)) 
                    for power, digit in enumerate(self.fractional_digits))
-        return whole + frac * (1 if not self.negative else -1)
+        total = whole + frac
+        return -total if self.negative else total
 
-    def _decimal_to_base(self, decimal_value):
-        # Create new AdvancedPrecisionNumber from decimal value
+    def _decimal_to_base(self, decimal_value, preserve_sign=True):
         new_num = AdvancedPrecisionNumber('0', self.base, self.precision)
-        new_num.negative = decimal_value < 0
+    
+        # Preserve sign
+        if preserve_sign:
+            new_num.negative = decimal_value < 0
         decimal_value = abs(decimal_value)
 
-        # Whole part conversion
+        # Whole part conversion (more precise)
         whole_part = int(decimal_value)
         new_num.whole_digits = []
         while whole_part > 0:
@@ -170,7 +163,7 @@ class AdvancedPrecisionNumber:
         if not new_num.whole_digits:
             new_num.whole_digits = [0]
 
-        # Fractional part conversion
+        # Fractional part conversion (improved)
         frac_part = decimal_value - int(decimal_value)
         new_num.fractional_digits = []
         for _ in range(self.precision):
@@ -180,6 +173,12 @@ class AdvancedPrecisionNumber:
             frac_part -= digit
 
         return new_num
+    
+    def _is_zero(self):
+        return all(d == 0 for d in self.whole_digits) and all(d == 0 for d in self.fractional_digits)
+
+    def _abs_value_as_digits(self):
+        return self.whole_digits + self.fractional_digits
 
     def __str__(self):
         """Enhanced string representation with precision warning and fraction support"""
@@ -241,67 +240,336 @@ class AdvancedPrecisionNumber:
                AdvancedPrecisionNumber(str(other), self.base, self.precision)
 
     def __add__(self, other):
-        # Convert to decimal, add, convert back
+        """Add two numbers in their native base without conversion"""
         other = self._ensure_apn(other)
-        decimal_sum = self._base_to_decimal() + other._base_to_decimal()
+    
+        # Handle different bases by converting other to self's base
+        if other.base != self.base:
+            other = other._convert_to_base(self.base)
+    
+        result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
+    
+        # Handle signs
+        if self.negative == other.negative:
+            result.negative = self.negative
+            result = self._abs_add(other)
+        else:
+            # If signs differ, subtract absolute values
+            if self._abs_compare(other) >= 0:
+                result = self._abs_subtract(other)
+                result.negative = self.negative
+            else:
+                result = other._abs_subtract(self)
+                result.negative = other.negative
+    
+        return result
+
+    def _abs_add(self, other):
+        """Add absolute values directly in base"""
+        result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
+        carry = 0
+    
+        # Add fractional parts from right to left
+        for i in range(max(len(self.fractional_digits), len(other.fractional_digits)) - 1, -1, -1):
+            digit1 = self.fractional_digits[i] if i < len(self.fractional_digits) else 0
+            digit2 = other.fractional_digits[i] if i < len(other.fractional_digits) else 0
         
-        # If both have fractions, add fractions
-        if self.fraction and other.fraction:
-            frac_sum = self.as_fraction() + other.as_fraction()
-            result = self._decimal_to_base(float(frac_sum))
-            result.fraction = frac_sum
-            return result
+            # Add in current base
+            total = digit1 + digit2 + carry
+            result.fractional_digits[i] = total % self.base
+            carry = total // self.base
+    
+        # Add whole parts from right to left
+        whole1 = self.whole_digits[::-1]
+        whole2 = other.whole_digits[::-1]
+        result_whole = []
+    
+        for i in range(max(len(whole1), len(whole2))):
+            digit1 = whole1[i] if i < len(whole1) else 0
+            digit2 = whole2[i] if i < len(whole2) else 0
         
-        return self._decimal_to_base(decimal_sum)
+            # Add in current base
+            total = digit1 + digit2 + carry
+            result_whole.append(total % self.base)
+            carry = total // self.base
+    
+        if carry:
+            result_whole.append(carry)
+    
+        result.whole_digits = result_whole[::-1]
+        return result
 
     def __sub__(self, other):
-        # Convert to decimal, subtract, convert back
+        """Subtract two numbers in their native base without conversion"""
         other = self._ensure_apn(other)
-        decimal_diff = self._base_to_decimal() - other._base_to_decimal()
-        
-        # If both have fractions, subtract fractions
-        if self.fraction and other.fraction:
-            frac_diff = self.as_fraction() - other.as_fraction()
-            result = self._decimal_to_base(float(frac_diff))
-            result.fraction = frac_diff
+    
+        if other.base != self.base:
+            other = other._convert_to_base(self.base)
+    
+        result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
+    
+        # If signs are different, add absolute values
+        if self.negative != other.negative:
+            result = self._abs_add(other)
+            result.negative = self.negative
             return result
-        
-        return self._decimal_to_base(decimal_diff)
+    
+        # If signs are same, subtract absolute values
+        if self._abs_compare(other) >= 0:
+            result = self._abs_subtract(other)
+            result.negative = self.negative
+        else:
+            result = other._abs_subtract(self)
+            result.negative = not self.negative
+    
+        return result
 
+    def _abs_subtract(self, other):
+        """Subtract absolute values directly in base"""
+        result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
+        borrow = 0
+    
+        # Subtract fractional parts
+        for i in range(len(self.fractional_digits) - 1, -1, -1):
+            digit1 = self.fractional_digits[i]
+            digit2 = other.fractional_digits[i] if i < len(other.fractional_digits) else 0
+        
+            # Handle borrow
+            if digit1 < digit2 + borrow:
+                digit1 += self.base
+                result.fractional_digits[i] = digit1 - digit2 - borrow
+                borrow = 1
+            else:
+                result.fractional_digits[i] = digit1 - digit2 - borrow
+                borrow = 0
+    
+        # Subtract whole parts
+        whole1 = self.whole_digits[::-1]
+        whole2 = other.whole_digits[::-1]
+        result_whole = []
+    
+        for i in range(max(len(whole1), len(whole2))):
+            digit1 = whole1[i] if i < len(whole1) else 0
+            digit2 = whole2[i] if i < len(whole2) else 0
+        
+            if digit1 < digit2 + borrow:
+                digit1 += self.base
+                result_whole.append(digit1 - digit2 - borrow)
+                borrow = 1
+            else:
+                result_whole.append(digit1 - digit2 - borrow)
+                borrow = 0
+    
+        result.whole_digits = result_whole[::-1]
+    
+        # Remove leading zeros
+        while len(result.whole_digits) > 1 and result.whole_digits[0] == 0:
+            result.whole_digits.pop(0)
+    
+        return result
+   
     def __mul__(self, other):
-        # Convert to decimal, multiply, convert back
+        """Multiply two numbers directly in their base without conversion"""
         other = self._ensure_apn(other)
-        decimal_product = self._base_to_decimal() * other._base_to_decimal()
+
+        # Handle different bases
+        if other.base != self.base:
+            other = other._convert_to_base(self.base)
+
+        result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
+        result.negative = self.negative != other.negative
+
+        # Use Karatsuba for large numbers
+        if len(self.whole_digits) > 32 and len(other.whole_digits) > 32:
+            return self._karatsuba_multiply(other)
+
+        # Regular multiplication for smaller numbers
+        return self._standard_multiply(other)
+
+    def _standard_multiply(self, other):
+        result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
+        result.negative = self.negative != other.negative
+
+        # Separate handling for whole and fractional parts
+        whole_product = [0] * (len(self.whole_digits) + len(other.whole_digits))
+    
+        # Multiply whole parts
+        for i in range(len(self.whole_digits)-1, -1, -1):
+            carry = 0
+            for j in range(len(other.whole_digits)-1, -1, -1):
+                pos = i + j
+                temp = whole_product[pos] + self.whole_digits[i] * other.whole_digits[j] + carry
+                whole_product[pos] = temp % self.base
+                carry = temp // self.base
+            if carry:
+                whole_product[i-1] = carry
+
+        # Remove leading zeros from whole part
+        while len(whole_product) > 1 and whole_product[0] == 0:
+            whole_product.pop(0)
+
+        # Handle fractional parts if present
+        frac_len = len(self.fractional_digits) + len(other.fractional_digits)
+        frac_product = [0] * frac_len
+
+        if frac_len > 0:
+            # Multiply including fractional parts
+            all_digits1 = self.whole_digits + self.fractional_digits
+            all_digits2 = other.whole_digits + other.fractional_digits
         
-        # If both have fractions, multiply fractions
-        if self.fraction and other.fraction:
-            frac_product = self.as_fraction() * other.as_fraction()
-            result = self._decimal_to_base(float(frac_product))
-            result.fraction = frac_product
-            return result
-        
-        return self._decimal_to_base(decimal_product)
+            for i in range(len(all_digits1)-1, -1, -1):
+                carry = 0
+                for j in range(len(all_digits2)-1, -1, -1):
+                    pos = i + j - frac_len
+                    if 0 <= pos < len(frac_product):
+                        temp = frac_product[pos] + all_digits1[i] * all_digits2[j] + carry
+                        frac_product[pos] = temp % self.base
+                        carry = temp // self.base
+
+        # Set results
+        result.whole_digits = whole_product
+        result.fractional_digits = (frac_product + [0] * result.precision)[:result.precision]
+
+        return result
+
+    def _karatsuba_multiply(self, other):
+        """Karatsuba multiplication algorithm for large numbers"""
+        if len(self.whole_digits) <= 32 or len(other.whole_digits) <= 32:
+            return self._standard_multiply(other)
+
+        # Split numbers into high and low parts
+        m = max(len(self.whole_digits), len(other.whole_digits))
+        m2 = m // 2
+
+        # Split self into high and low
+        high1 = AdvancedPrecisionNumber('0', self.base)
+        low1 = AdvancedPrecisionNumber('0', self.base)
+        high1.whole_digits = self.whole_digits[:-m2] if len(self.whole_digits) > m2 else [0]
+        low1.whole_digits = self.whole_digits[-m2:]
+
+        # Split other into high and low
+        high2 = AdvancedPrecisionNumber('0', self.base)
+        low2 = AdvancedPrecisionNumber('0', self.base)
+        high2.whole_digits = other.whole_digits[:-m2] if len(other.whole_digits) > m2 else [0]
+        low2.whole_digits = other.whole_digits[-m2:]
+
+        # Recursive steps
+        z0 = low1._standard_multiply(low2)
+        z1 = (high1._standard_multiply(low2))._abs_add(low1._standard_multiply(high2))
+        z2 = high1._standard_multiply(high2)
+
+        # Combine results
+        result = z2
+        for _ in range(2 * m2):
+            result.whole_digits.append(0)
+    
+        temp = z1
+        for _ in range(m2):
+            temp.whole_digits.append(0)
+    
+        result = result._abs_add(temp)._abs_add(z0)
+        result.negative = self.negative != other.negative
+
+        return result
 
     def __truediv__(self, other):
-        # Convert to decimal, divide, convert back
+        """Divide two numbers directly in their base without conversion"""
         other = self._ensure_apn(other)
-        if abs(other._base_to_decimal()) < 1e-10:
-            raise ZeroDivisionError("Division by zero")
-        
-        decimal_quotient = self._base_to_decimal() / other._base_to_decimal()
-        
-        # If both have fractions, divide fractions
-        if self.fraction and other.fraction:
-            try:
-                frac_quotient = self.as_fraction() / other.as_fraction()
-                result = self._decimal_to_base(float(frac_quotient))
-                result.fraction = frac_quotient
-                return result
-            except ZeroDivisionError:
-                raise ZeroDivisionError("Division by zero")
-        
-        return self._decimal_to_base(decimal_quotient)
 
+        if other._is_zero():
+            raise ZeroDivisionError("Division by zero")
+
+        if other.base != self.base:
+            other = other._convert_to_base(self.base)
+
+        # Handle signs
+        result_negative = self.negative != other.negative
+    
+        # Use Newton-Raphson for optimization if numbers are large
+        if len(self.whole_digits) > 50 or len(other.whole_digits) > 50:
+            return self._newton_raphson_divide(other)
+
+        return self._long_division(other, result_negative)
+
+    def _long_division(self, other, result_negative):
+        precision = max(self.precision, other.precision)
+        result = AdvancedPrecisionNumber('0', self.base, precision)
+        result.negative = result_negative
+
+        # Scale the dividend and divisor
+        scale = self.base ** precision
+        dividend = int(''.join(map(str, self.whole_digits))) * scale + \
+                int(''.join(map(str, self.fractional_digits[:precision])))
+        divisor = int(''.join(map(str, other.whole_digits))) * scale + \
+                int(''.join(map(str, other.fractional_digits[:precision])))
+
+        if divisor == 0:
+            raise ZeroDivisionError("Division by zero")
+
+        # Perform division
+        quotient = dividend // divisor
+        remainder = dividend % divisor
+
+        # Convert back to base representation
+        whole_part = quotient
+        result.whole_digits = []
+        while whole_part > 0:
+            result.whole_digits.insert(0, whole_part % self.base)
+            whole_part //= self.base
+
+        if not result.whole_digits:
+            result.whole_digits = [0]
+
+        # Calculate fractional part
+        frac_part = remainder / divisor
+        result.fractional_digits = []
+        for _ in range(precision):
+            frac_part *= self.base
+            digit = int(frac_part)
+            result.fractional_digits.append(digit)
+            frac_part -= digit
+
+        return result
+
+
+    def _newton_raphson_divide(self, other):
+        """Division using Newton-Raphson method for optimization"""
+        precision = max(self.precision, other.precision)
+        result = AdvancedPrecisionNumber('0', self.base, precision)
+    
+        # Initial guess (using shift operations in the current base)
+        x = self._initial_guess_for_division(other)
+    
+        # Newton iterations: x = x * (2 - other * x)
+        for _ in range(10):  # Usually converges in fewer iterations
+            prev_x = x
+            x = x._standard_multiply(
+                AdvancedPrecisionNumber('2', self.base) - 
+                other._standard_multiply(x)
+            )
+        
+            # Check for convergence
+            if self._abs_compare(prev_x, x) < self.precision:
+                break
+    
+        # Final multiplication to get result
+        result = self._standard_multiply(x)
+        result.negative = self.negative != other.negative
+    
+        return result
+    
+    def _initial_guess_for_division(self, other):
+        # Simple initial guess for Newton-Raphson division
+        return AdvancedPrecisionNumber('1', self.base, self.precision)
+
+    def _multiply_by_digit(self, digits, n):
+        """Multiply a list of digits by a single digit in current base"""
+        result = 0
+        for d in digits:
+            result = result * self.base + d * n
+        return result
+
+    
     def to_fraction(self, limit_denominator=None):
         """
         Convert the number to a Fraction with optional denominator limit
@@ -356,11 +624,28 @@ class AdvancedPrecisionNumber:
         decimal_mod = self._base_to_decimal() % other._base_to_decimal()
         return self._decimal_to_base(decimal_mod)
 
-    def __pow__(self, other):
-        # Convert to decimal, power, convert back
-        other = self._ensure_apn(other)
-        decimal_power = self._base_to_decimal() ** other._base_to_decimal()
-        return self._decimal_to_base(decimal_power)
+    def __pow__(self, n):
+        """Calculate power using binary exponentiation in current base"""
+        if not isinstance(n, int):
+            raise ValueError("Power operation currently supports only integer exponents")
+    
+        if n == 0:
+            return AdvancedPrecisionNumber('1', self.base, self.precision)
+    
+        if n < 0:
+            base_inv = self.inverse()
+            return base_inv.__pow__(-n)
+    
+        result = AdvancedPrecisionNumber('1', self.base, self.precision)
+        base = AdvancedPrecisionNumber(self)
+    
+        while n > 0:
+            if n & 1:  # If n is odd
+                result = result._standard_multiply(base)
+            base = base._standard_multiply(base)
+            n >>= 1
+    
+        return result
 
     def __eq__(self, other):
         other = self._ensure_apn(other)
@@ -384,37 +669,59 @@ class AdvancedPrecisionNumber:
 
     # Unary operations
     def sqrt(self):
-        """
-        Calculate square root using Newton-Raphson method
-        Provides an iterative approach to square root calculation
-        without relying on math.sqrt()
-        """
-        # Handle special cases
-        if self < AdvancedPrecisionNumber('0'):
-            raise ValueError("Cannot calculate square root of a negative number")
-    
-        if self == AdvancedPrecisionNumber('0'):
-            return self._decimal_to_base(0)
-    
-        # Initial guess (using divide by 2)
-        x = self._decimal_to_base(self._base_to_decimal() / 2)
-    
-        # Convergence parameters
-        epsilon = 1e-10  # Precision threshold
-        max_iterations = 100
-    
-        for _ in range(max_iterations):
-            # Newton-Raphson iteration: x = (x + n/x) / 2
-            next_x = (x + (self / x)) * self._decimal_to_base('0.5')
+        """Calculate square root directly in base using digit-by-digit method"""
+        try:
+            # Input validation
+            if self.negative:
+                raise ValueError("Cannot calculate square root of negative number")
         
-            # Check for convergence
-            if abs(next_x * next_x - self) < AdvancedPrecisionNumber(str(epsilon)):
-                return next_x
-        
-            x = next_x
+            if self._is_zero():
+                return AdvancedPrecisionNumber('0', self.base, self.precision)
+
+            # Precision check
+            if self.precision_loss_warning:
+                warnings.warn("Result may have reduced precision due to input number")
+
+            # Overflow check for very large numbers
+            if len(self.whole_digits) > self.max_precision:
+                raise OverflowError("Input number too large for accurate square root calculation")
+
+            # Actual calculation with error tracking
+            result = AdvancedPrecisionNumber('0', self.base, self.precision)
+            try:
+                # Prepare digits for processing
+                digits = self.whole_digits + self.fractional_digits
+                if len(self.whole_digits) % 2 == 1:
+                    digits.insert(0, 0)  # Pad with zero if odd number of digits
     
-        # Fallback if max iterations reached
-        return x
+                # Process pairs of digits
+                current = 0
+                result_digits = []
+    
+                for i in range(0, len(digits), 2):
+                    # Bring down next pair of digits
+                    current = current * (self.base ** 2) + digits[i] * self.base + (digits[i+1] if i+1 < len(digits) else 0)
+        
+                    # Find next digit of the square root
+                    x = 0
+                    while (x + 1) * (x + 1) <= current:
+                        x += 1
+        
+                    result_digits.append(x)
+                    current -= x * x
+    
+                # Set whole and fractional parts
+                mid_point = (len(self.whole_digits) + 1) // 2
+                result.whole_digits = result_digits[:mid_point] or [0]
+                result.fractional_digits = (result_digits[mid_point:] + [0] * self.precision)[:self.precision]
+    
+                return result
+            
+            except Exception as e:
+                raise ValueError(f"Square root calculation failed: {str(e)}")
+
+        except Exception as e:
+            raise ValueError(f"Error in square root calculation: {str(e)}")
 
     def sqr(self):
         return self * self
@@ -445,415 +752,355 @@ class AdvancedPrecisionNumber:
         return self._decimal_to_base(result)
 
     def log(self, base=None):
-        """
-        Calculate logarithm using Taylor series expansion.
-        If base is not specified, calculates natural logarithm.
-        Implemented without using math library.
-        """
-        decimal_value = self._base_to_decimal()
+        # Result variable is used before initialization
+        result = AdvancedPrecisionNumber('0', self.base, self.precision)
+        try:
+            # Input validation
+            if self.negative or self._is_zero():
+                raise ValueError("Logarithm undefined for non-positive numbers")
 
-        if decimal_value <= 0:
-            raise ValueError("Logarithm is only defined for positive numbers")
-
-        # Custom e calculation using Taylor series
-        def calculate_e(terms=50):
-            """
-            Calculate e using Taylor series: e = 1 + 1/1! + 1/2! + 1/3! + ...
-            """
-            e = 0
-            factorial = 1
-            for n in range(terms):
-                if n > 0:
-                    factorial *= n
-                e += 1 / factorial
-            return e
-
-        # Precalculate e once
-        E = calculate_e()
-
-        # Special case for base 1
-        if base is not None:
-            base = self._ensure_apn(base)
-            if abs(base._base_to_decimal()) < 1e-10:
-                raise ValueError("Base cannot be zero or near zero")
-            if base._base_to_decimal() == 1:
-                raise ValueError("Logarithm with base 1 is undefined")
-
-        def ln(x):
-            """
-            Calculate natural logarithm using Taylor series
-            Works best for x close to 1
-            """
-            # Reduce input to range where Taylor series converges quickly
-            if x <= 0:
-                raise ValueError("Natural log is undefined for non-positive numbers")
-        
-            # Transformation to bring x close to 1
-            adjustment = 0
-            while x > 2:
-                x /= E
-                adjustment += 1
-            while x < 0.5:
-                x *= E
-                adjustment -= 1
-        
-            # Taylor series expansion
-            y = (x - 1) / (x + 1)
-            result = 0
-            power = y
-        
-            for n in range(1, 100, 2):
-                term = power / n
-                result += term
+            if base is not None:
+                if not isinstance(base, (int, float, str, AdvancedPrecisionNumber)):
+                    raise TypeError("Base must be a number")
             
-                # Stop if term becomes very small
-                if abs(term) < 1e-15:
-                    break
+                base_num = self._ensure_apn(base)
+                if base_num._is_zero() or base_num.negative:
+                    raise ValueError("Logarithm base must be positive")
             
-                power *= y * y
+                if base_num._abs_compare(AdvancedPrecisionNumber('1', self.base)) == 0:
+                    raise ValueError("Logarithm base cannot be 1")
+
+            # Precision checks
+            if self.precision_loss_warning:
+                warnings.warn("Result may have reduced precision due to input number")
+
+            # Handle special cases
+            if self._abs_compare(AdvancedPrecisionNumber('1', self.base)) == 0:
+                return AdvancedPrecisionNumber('0', self.base, self.precision)
+    
+            # Calculate natural logarithm using series expansion
+            # ln(x) = 2(a + a³/3 + a⁵/5 + ...) where a = (x-1)/(x+1)
+            x = AdvancedPrecisionNumber(self)
+            one = AdvancedPrecisionNumber('1', self.base)
+    
+            # Calculate (x-1)/(x+1)
+            a = (x - one)._standard_multiply((x + one).inverse())
+    
+            # Series expansion
+            term = AdvancedPrecisionNumber(a)
+            power = AdvancedPrecisionNumber(a)
+            divisor = AdvancedPrecisionNumber('1', self.base)
+    
+            for i in range(1, self.precision * 2, 2):
+                result = result + term._standard_multiply(divisor)
+                power = power._standard_multiply(a)._standard_multiply(a)
+                term = power
+                divisor = AdvancedPrecisionNumber(str(i + 2), self.base)
+    
+            result = result._standard_multiply(AdvancedPrecisionNumber('2', self.base))
+    
+            # If base is specified, convert to the desired base
+            if base is not None:
+                base_num = AdvancedPrecisionNumber(str(base), self.base)
+                result = result._standard_multiply(base_num.log().inverse())
+    
+        except Exception as e:
+            raise ValueError(f"Error in logarithm calculation: {str(e)}")
+
+    def exp(self):
+        """Calculate exponential function using Taylor series in current base"""
+        # If number is too large, avoid overflow
+        if self._abs_compare(AdvancedPrecisionNumber('100', self.base)) > 0:
+            raise ValueError("Argument too large for exponential function")
+    
+        result = AdvancedPrecisionNumber('1', self.base, self.precision)
+        term = AdvancedPrecisionNumber('1', self.base)
+        x = AdvancedPrecisionNumber(self)
+    
+        # Taylor series: e^x = 1 + x + x²/2! + x³/3! + ...
+        for i in range(1, self.precision * 2):
+            term = term._standard_multiply(x)._standard_multiply(
+                AdvancedPrecisionNumber(str(1/i), self.base))
+            result = result + term
         
-            return 2 * result + adjustment
-
-        # Natural logarithm calculation
-        if base is None:
-            return self._decimal_to_base(ln(decimal_value))
-
-        # Change of base formula: log_b(x) = ln(x) / ln(b)
-        return self._decimal_to_base(
-            ln(decimal_value) / ln(base._base_to_decimal())
-        )
+            # Check for convergence
+            if term._abs_compare(AdvancedPrecisionNumber('1e-' + str(self.precision), self.base)) < 0:
+                break
+    
+        return result
 
     def inverse(self):
-        """
-        Calculate the multiplicative inverse (1/x)
-        """
-        if abs(self._base_to_decimal()) < 1e-10:
+        """Calculate multiplicative inverse (1/x) using Newton's method"""
+        if self._is_zero():
             raise ZeroDivisionError("Cannot calculate inverse of zero")
     
-        return self._decimal_to_base(1 / self._base_to_decimal())
+        # Initial guess
+        result = AdvancedPrecisionNumber('1', self.base, self.precision)
+        one = AdvancedPrecisionNumber('1', self.base)
+    
+        for _ in range(self.precision):
+            # Newton iteration: x = x * (2 - a*x)
+            prev = AdvancedPrecisionNumber(result)
+            result = result._standard_multiply(
+                AdvancedPrecisionNumber('2', self.base) - 
+                self._standard_multiply(result)
+            )
+        
+            # Check for convergence
+            if result._abs_compare(prev) == 0:
+                break
+    
+        result.negative = self.negative
+        return result
 
    
     # Trigonometric Functions
     def sin(self):
-        """
-        Calculate sine of the number using Taylor series expansion
-        Assumes input is in radians
-        Uses enhanced Taylor series for more accurate results
-        """
-        # Convert to decimal for calculations
-        x = self._base_to_decimal()
-    
-        # Custom pi calculation using Leibniz-like series
-        def calculate_pi(terms=50):
-            """
-            Calculate π using a convergent series approximation
-            Uses a series that converges to π/4
-            """
-            pi = 0
-            sign = 1
-            for k in range(terms):
-                pi += sign * (4.0 / (2*k + 1))
-                sign *= -1
-            return pi * 4
+        if self.precision_loss_warning:
+            warnings.warn("Result may have reduced precision")
+        
+        try:
+            # Input validation and normalization
+            if not all(isinstance(d, int) for d in self.whole_digits + self.fractional_digits):
+                raise ValueError("Invalid digits in number")
 
-        # Custom angle normalization without math.pi
-        PI = calculate_pi()
-        TWO_PI = PI * 2
+            # Range check
+            angle = self._normalize_angle()
+            if angle._abs_compare(AdvancedPrecisionNumber('1e6', self.base)) > 0:
+                warnings.warn("Large angles may result in reduced precision")
+
+            # Precision check
+            if self.precision_loss_warning:
+                warnings.warn("Result may have reduced precision")
+
+            # Special cases
+            if self._is_zero():
+                return AdvancedPrecisionNumber('0', self.base, self.precision)
+
+            """Calculate sine using Taylor series in current base"""
+            # Normalize angle to [-2π, 2π]
+            angle = self._normalize_angle()
     
-        # Normalize angle to [-2π, 2π] range for efficiency
-        # Equivalent to multiple full rotations cancel out
-        x = x % TWO_PI
+            result = AdvancedPrecisionNumber('0', self.base, self.precision)
+            x = AdvancedPrecisionNumber(angle)
+            term = AdvancedPrecisionNumber(x)
     
-        # Reduce range to [-π, π] for better series convergence
-        if x > PI:
-            x -= TWO_PI
-        elif x < -PI:
-            x += TWO_PI
+            # Taylor series: sin(x) = x - x³/3! + x⁵/5! - x⁷/7! + ...
+            n = 1
+            sign = AdvancedPrecisionNumber('1', self.base)
     
-        # Taylor series for sine: 
-        # sin(x) = x - x³/3! + x⁵/5! - x⁷/7! + x⁹/9! - ...
-        result = x
-        factorial = 1
-        power = x * x
-        sign = -1
-    
-        # Compute series expansion
-        for n in range(1, 20):  # Increased number of terms for precision
-            # Calculate factorial denominator
-            factorial *= (2*n) * (2*n + 1)
+            while True:
+                result = result + term._standard_multiply(sign)
         
-            # Compute next term
-            term = sign * (power / factorial) * x
-            result += term
+                # Prepare next term
+                x_squared = x._standard_multiply(x)
+                term = term._standard_multiply(x_squared)
+                term = term._standard_multiply(
+                    AdvancedPrecisionNumber(str(1/((2*n)*(2*n+1))), self.base)
+                )
         
-            # Alternate sign for series
-            sign *= -1
+                n += 1
+                sign.negative = not sign.negative
         
-            # Update power for next iteration
-            power *= x * x
-        
-            # Stop if term becomes very small (suggests convergence)
-            if abs(term) < 1e-15:
-                break
+                # Check for convergence
+                if term._abs_compare(
+                    AdvancedPrecisionNumber('1e-' + str(self.precision), self.base)) < 0:
+                    break
+        except Exception as e:
+            raise ValueError(f"Error in sine calculation: {str(e)}")
     
-        return self._decimal_to_base(result)
+        return result
 
     def cos(self):
-        """
-        Calculate cosine of the number with improved precision
-        Assumes input is in radians
-        Uses Taylor series expansion for more accurate results
-        """
-        # Convert to decimal for calculations
-        x = self._base_to_decimal()
-    
-        # Custom pi calculation using Leibniz-like series
-        def calculate_pi(terms=50):
-            """
-            Calculate π using a convergent series approximation
-            Uses a series that converges to π/4
-            """
-            pi = 0
-            sign = 1
-            for k in range(terms):
-                pi += sign * (4.0 / (2*k + 1))
-                sign *= -1
-            return pi * 4
-
-        # Custom angle normalization without math.pi
-        PI = calculate_pi()
-        TWO_PI = PI * 2
-    
-        # Normalize angle to [-π, π] range
-        x = x % TWO_PI
-        while x > PI:
-            x -= TWO_PI
-        while x < -PI:
-            x += TWO_PI
-    
-        # Taylor series for cosine
-        # cos(x) = 1 - x²/2! + x⁴/4! - x⁶/6! + ...
-        result = 1  # Start with 1 instead of 0
-        power = x * x
-        factorial = 2
-        sign = -1
-    
-        # Use enough terms for high precision
-        for n in range(1, 20):  # Increased number of terms for more precision
-            # Compute next term
-            term = sign * (power / factorial)
-            result += term
+        if self.precision_loss_warning:
+            warnings.warn("Result may have reduced precision")
         
-            # Alternate sign for series
-            sign *= -1
+        """Calculate cosine using Taylor series in current base"""
+        # Normalize angle to [-2π, 2π]
+        angle = self._normalize_angle()
+    
+        result = AdvancedPrecisionNumber('1', self.base, self.precision)
+        x = AdvancedPrecisionNumber(angle)
+        term = AdvancedPrecisionNumber('1', self.base)
+    
+        # Taylor series: cos(x) = 1 - x²/2! + x⁴/4! - x⁶/6! + ...
+        n = 1
+        sign = AdvancedPrecisionNumber('1', self.base)
+        sign.negative = True
+    
+        x_squared = x._standard_multiply(x)
+        term = term._standard_multiply(x_squared)
+        term = term._standard_multiply(
+            AdvancedPrecisionNumber(str(1/2), self.base)
+        )
+    
+        while True:
+            result = result + term._standard_multiply(sign)
         
-            # Update power and factorial for next iteration
-            power *= x * x
-            factorial *= (2*n + 1) * (2*n + 2)
+            # Prepare next term
+            term = term._standard_multiply(x_squared)
+            term = term._standard_multiply(
+                AdvancedPrecisionNumber(str(1/((2*n)*(2*n+1))), self.base)
+            )
         
-            # Stop if term becomes very small (suggests convergence)
-            if abs(term) < 1e-15:
+            n += 1
+            sign.negative = not sign.negative
+        
+            # Check for convergence
+            if term._abs_compare(
+                AdvancedPrecisionNumber('1e-' + str(self.precision), self.base)) < 0:
                 break
     
-        return self._decimal_to_base(result)
-    
+        return result
+
     def tan(self):
-        """
-        Calculate tangent of the number with improved precision
-        Assumes input is in radians
-        Uses series expansion and internal sin/cos methods for calculation
-        """
-        # Convert to decimal for calculations
-        x = self._base_to_decimal()
+        if self.precision_loss_warning:
+            warnings.warn("Result may have reduced precision")
+        
+        """Calculate tangent using sin/cos ratio"""
+        cos_x = self.cos()
+        if cos_x._is_zero():
+            raise ValueError("Tangent undefined at this point (cos(x) = 0)")
     
-        # Define PI constant without math module
-        PI = 3.141592653589793
-        HALF_PI = PI / 2
-    
-        # Normalize angle to [-π/2, π/2] range
-        while x > HALF_PI:
-            x -= PI
-        while x < -HALF_PI:
-            x += PI
-    
-        # Calculate sin and cos using internal methods
-        sin_x = self._decimal_to_base(x).sin()
-        cos_x = self._decimal_to_base(x).cos()
-    
-        # Check for undefined points (where cos(x) = 0)
-        if abs(cos_x._base_to_decimal()) < 1e-10:
-            raise ValueError("Tangent is undefined at this point (cos(x) approaches zero)")
-    
-        # Calculate tan as sin(x) / cos(x)
-        return sin_x / cos_x
+        return self.sin()._standard_multiply(cos_x.inverse())
 
     def arcsin(self):
-        """
-        Calculate arcsine (inverse sine) with improved precision
-        Returns result in radians
-        Uses series expansion for accurate calculation
-        """
-        decimal_value = self._base_to_decimal()
-    
-        # Input domain check
-        if decimal_value < -1 or decimal_value > 1:
-            raise ValueError("Arcsine is only defined for values between -1 and 1")
-    
-        # High-precision constants without math module
-        PI_HALF = 1.5707963267948966  # π/2 to high precision
-    
-        # Special case handling for exact values
-        if decimal_value == -1:
-            return self._decimal_to_base(-PI_HALF)
-        if decimal_value == 1:
-            return self._decimal_to_base(PI_HALF)
-        if decimal_value == 0:
-            return self._decimal_to_base(0)
-    
-        # Maclaurin series for arcsin(x)
-        # arcsin(x) = x + (1/2)(x³/3) + (1·3/2·4)(x⁵/5) + (1·3·5/2·4·6)(x⁷/7) + ...
-        result = decimal_value
-        power = decimal_value
-        denominator = 1
-        numerator = 1
-    
-        # Compute series expansion
-        for n in range(1, 20):  # Increased number of terms for precision
-            # Update numerator and denominator for next term
-            numerator *= 2 * n - 1
-            denominator *= 2 * n
+        if self.precision_loss_warning:
+            warnings.warn("Result may have reduced precision")
         
-            # Compute next term in the series
-            power *= decimal_value * decimal_value
-            term = (numerator / (denominator * (2*n + 1))) * power
+        """Calculate arcsine using Taylor series"""
+        if self._abs_compare(AdvancedPrecisionNumber('1', self.base)) > 0:
+            raise ValueError("Arcsine argument must be between -1 and 1")
+    
+        result = AdvancedPrecisionNumber('0', self.base, self.precision)
+        x = AdvancedPrecisionNumber(self)
+        term = AdvancedPrecisionNumber(x)
+    
+        # Taylor series for arcsin(x)
+        n = 0
+        coef = AdvancedPrecisionNumber('1', self.base)
+        x_squared = x._standard_multiply(x)
+    
+        while True:
+            result = result + term._standard_multiply(coef)
         
-            # Add term to result
-            result += term
+            # Calculate next coefficient
+            n += 1
+            coef = coef._standard_multiply(
+                AdvancedPrecisionNumber(str((2*n-1)*(2*n-1)), self.base)
+            )._standard_multiply(
+                AdvancedPrecisionNumber(str(1/(2*n*(2*n+1))), self.base)
+            )
         
-            # Stop if term becomes very small (suggests convergence)
-            if abs(term) < 1e-15:
+            # Prepare next term
+            term = term._standard_multiply(x_squared)
+        
+            # Check for convergence
+            if term._abs_compare(
+                AdvancedPrecisionNumber('1e-' + str(self.precision), self.base)) < 0:
                 break
     
-        return self._decimal_to_base(result)
+        return result
 
     def arccos(self):
-        """
-        Calculate arccosine (inverse cosine) with improved precision
-        Returns result in radians
-        Uses series expansion for accurate calculation
-        """
-        decimal_value = self._base_to_decimal()
-
-        # Input domain check
-        if decimal_value < -1 or decimal_value > 1:
-            raise ValueError("Arccosine is only defined for values between -1 and 1")
-
-        # Custom pi calculation using Leibniz-like series
-        def calculate_pi(terms=50):
-            """
-            Calculate π using a convergent series approximation
-            Uses a series that converges to π/4
-            """
-            pi = 0
-            sign = 1
-            for k in range(terms):
-                pi += sign * (4.0 / (2*k + 1))
-                sign *= -1
-            return pi * 4
-
-        # High-precision constants
-        PI = calculate_pi()
-        HALF_PI = PI / 2
-
-        # Special case handling for exact values
-        if decimal_value == -1:
-            return self._decimal_to_base(PI)
-        if decimal_value == 1:
-            return self._decimal_to_base(0)
-        if decimal_value == 0:
-            return self._decimal_to_base(HALF_PI)
-
-        # Relationship between arcsin and arccos
+        if self.precision_loss_warning:
+            warnings.warn("Result may have reduced precision")
+        
+        """Calculate arccosine using arcsin"""
+        if self._abs_compare(AdvancedPrecisionNumber('1', self.base)) > 0:
+            raise ValueError("Arccosine argument must be between -1 and 1")
+    
         # arccos(x) = π/2 - arcsin(x)
-    
-        # Maclaurin series for arcsin(x)
-        # arcsin(x) = x + (1/2)(x³/3) + (1·3/2·4)(x⁵/5) + (1·3·5/2·4·6)(x⁷/7) + ...
-        result = decimal_value
-        power = decimal_value
-        denominator = 1
-        numerator = 1
-
-        # Compute series expansion
-        for n in range(1, 20):  # Increased number of terms for precision
-            # Update numerator and denominator for next term
-            numerator *= 2 * n - 1
-            denominator *= 2 * n
-    
-            # Compute next term in the series
-            power *= decimal_value * decimal_value
-            term = (numerator / (denominator * (2*n + 1))) * power
-    
-            # Add term to result
-            result += term
-    
-            # Stop if term becomes very small (suggests convergence)
-            if abs(term) < 1e-15:
-                break
-
-        # arccos(x) = π/2 - arcsin(x)
-        final_result = HALF_PI - result
-
-        return self._decimal_to_base(final_result)
+        pi_half = self._get_pi()._standard_multiply(
+            AdvancedPrecisionNumber('0.5', self.base)
+        )
+        return pi_half - self.arcsin()
 
     def arctan(self):
-        """
-        Calculate arctangent (inverse tangent) with improved precision
-        Returns result in radians
-        Uses series expansion for accurate calculation
-        """
-        decimal_value = self._base_to_decimal()
+        """Calculate arctangent using Taylor series"""
+        result = AdvancedPrecisionNumber('0', self.base, self.precision)
     
-        # Special case handling for extreme values
-        if decimal_value == 0:
-            return self._decimal_to_base(0)
+        # Use series expansion for |x| <= 1
+        # For |x| > 1, use arctan(x) = π/2 - arctan(1/x)
+        if self._abs_compare(AdvancedPrecisionNumber('1', self.base)) > 0:
+            pi_half = self._get_pi()._standard_multiply(
+                AdvancedPrecisionNumber('0.5', self.base)
+            )
+            return pi_half - self.inverse().arctan()
     
-        # Determine sign and work with absolute value
-        sign = 1 if decimal_value > 0 else -1
-        x = abs(decimal_value)
+        x = AdvancedPrecisionNumber(self)
+        term = AdvancedPrecisionNumber(x)
+        x_squared = x._standard_multiply(x)
+        sign = AdvancedPrecisionNumber('1', self.base)
     
-        # Constants without math library
-        HALF_PI = 1.5707963267948966  # π/2 to high precision
-    
-        # Special handling for large values
-        if x > 1:
-            # For x > 1, use the relationship: arctan(x) = π/2 - arctan(1/x)
-            reciprocal_result = self.arctan(AdvancedPrecisionNumber('1') / AdvancedPrecisionNumber(str(x)))
-            return self._decimal_to_base(HALF_PI - reciprocal_result._base_to_decimal())
-    
-        # Derivative series for arctan
-        # arctan(x) = x - x³/3 + x⁵/5 - x⁷/7 + x⁹/9 - ...
-        result = 0
-        power = x
-        sign_alternate = 1
-    
-        # Compute series expansion
-        for n in range(20):  # Increased number of terms for precision
-            # Compute term
-            term = sign_alternate * (power / (2*n + 1))
-            result += term
+        # Taylor series: arctan(x) = x - x³/3 + x⁵/5 - x⁷/7 + ...
+        n = 1
+        while True:
+            result = result + term._standard_multiply(sign)
         
-            # Stop if term becomes very small (suggests convergence)
-            if abs(term) < 1e-15:
+            # Prepare next term
+            term = term._standard_multiply(x_squared)
+            n += 2
+            sign.negative = not sign.negative
+        
+            # Check for convergence
+            if term._abs_compare(
+                AdvancedPrecisionNumber('1e-' + str(self.precision), self.base)) < 0:
                 break
+    
+        return result
+
+    def _normalize_angle(self):
+        """Normalize angle with error handling"""
+        try:
+            two_pi = self._get_pi()._standard_multiply(
+                AdvancedPrecisionNumber('2', self.base)
+            )
         
-            # Update for next iteration
-            power *= x * x
-            sign_alternate *= -1
+            result = AdvancedPrecisionNumber(self)
+            max_iterations = 1000  # Prevent infinite loops
+            iteration = 0
+        
+            while result._abs_compare(two_pi) > 0 and iteration < max_iterations:
+                if result.negative:
+                    result = result + two_pi
+                else:
+                    result = result - two_pi
+                iteration += 1
+            
+            if iteration >= max_iterations:
+                raise ValueError("Angle normalization failed to converge")
+            
+            return result
+        except Exception as e:
+            raise ValueError(f"Error in angle normalization: {str(e)}")
+
+    def _get_pi(self):
+        """Calculate π using Chudnovsky algorithm"""
+        k = 0
+        a_k = AdvancedPrecisionNumber('1', self.base)
+        a_sum = AdvancedPrecisionNumber('1', self.base)
+        precision_target = self.precision + 10
     
-        # Apply original sign
-        result *= sign
+        while k < precision_target:
+            k += 1
+            a_k = a_k._standard_multiply(
+                AdvancedPrecisionNumber(str(-(6*k-5)*(2*k-1)*(6*k-1)), self.base)
+            )._standard_multiply(
+                AdvancedPrecisionNumber(str(1/(k*k*k*640320*640320)), self.base)
+            )
+        
+            a_sum = a_sum + a_k
+        
+            if a_k._abs_compare(
+                AdvancedPrecisionNumber('1e-' + str(precision_target), self.base)) < 0:
+                break
     
-        return self._decimal_to_base(result)
+        result = AdvancedPrecisionNumber('426880', self.base)._standard_multiply(
+            AdvancedPrecisionNumber('10005', self.base).sqrt()
+        )._standard_multiply(a_sum.inverse())
+    
+        return result
 
             
 def calculate_repl():
