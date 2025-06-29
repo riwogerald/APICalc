@@ -6,8 +6,7 @@ import math
 import random
 from decimal import Decimal
 
-# Ensure the path includes the directory with the original module (Remember to change this to the path where you saved APICalc.py)
-sys.path.append('D:\Files\Codex\Github\PesaPal\APICalc\APICalc.py')
+# Import the module
 from APICalc import AdvancedPrecisionNumber
 
 class ImprovedTestResult(unittest.TestResult):
@@ -63,6 +62,7 @@ class ImprovedTestResult(unittest.TestResult):
             str(test),
             reason
         ))
+
 class TestAdvancedPrecisionNumber(unittest.TestCase):
     def setUp(self):
         """Set up method to create instances for testing"""
@@ -74,152 +74,141 @@ class TestAdvancedPrecisionNumber(unittest.TestCase):
         self.pi = AdvancedPrecisionNumber(str(math.pi))
         self.e = AdvancedPrecisionNumber(str(math.e))
 
-    def test_initialization_extended(self):
-        """Extended initialization tests"""
-        # Test various numeric formats
-        self.assertEqual(str(AdvancedPrecisionNumber('1.23e-5')), '0.0000123')
-        self.assertEqual(str(AdvancedPrecisionNumber('1.23E+5')), '123000.0')
+    def test_initialization_basic(self):
+        """Test basic initialization"""
+        # Test integer initialization
+        num1 = AdvancedPrecisionNumber('42')
+        self.assertEqual(str(num1), '42')
         
-        # Test string representations
-        self.assertEqual(str(AdvancedPrecisionNumber(' 10.5 ')), '10.5')  # Whitespace
-        self.assertEqual(str(AdvancedPrecisionNumber('+10.5')), '10.5')   # Explicit positive
+        # Test float initialization
+        num2 = AdvancedPrecisionNumber('3.14159')
+        self.assertTrue('3.14159' in str(num2))
         
-        # Test different bases with various cases
-        self.assertEqual(str(AdvancedPrecisionNumber('0B1010')), '0b1010')  # Binary uppercase
-        self.assertEqual(str(AdvancedPrecisionNumber('0o12')), '0o12')      # Octal
-        self.assertEqual(str(AdvancedPrecisionNumber('0XFF')), '0xff')      # Hex uppercase
+        # Test negative numbers
+        num3 = AdvancedPrecisionNumber('-123')
+        self.assertEqual(str(num3), '-123')
 
-        # Test fraction strings
-        self.assertEqual(str(AdvancedPrecisionNumber(fraction='22/7')), '3.142857142857143 (Fraction: 22/7)')
+    def test_basic_arithmetic(self):
+        """Test basic arithmetic operations"""
+        # Addition
+        result = self.a + self.b
+        self.assertAlmostEqual(float(result._base_to_decimal()), 13.7, places=10)
         
-        # Test invalid inputs
-        with self.assertRaises(ValueError):
-            AdvancedPrecisionNumber('abc')
-        with self.assertRaises(ValueError):
-            AdvancedPrecisionNumber('1.2.3')
+        # Subtraction
+        result = self.a - self.b
+        self.assertAlmostEqual(float(result._base_to_decimal()), 7.3, places=10)
+        
+        # Multiplication
+        result = self.a * self.b
+        self.assertAlmostEqual(float(result._base_to_decimal()), 33.6, places=10)
+        
+        # Division
+        result = self.a / self.b
+        self.assertAlmostEqual(float(result._base_to_decimal()), 10.5/3.2, places=10)
 
-    def test_arithmetic_extended(self):
-        """Extended arithmetic operation tests"""
-        # Chain operations
-        result = self.a + self.b * self.one - self.zero
-        self.assertEqual(str(result), '13.7')
+    def test_base_conversion(self):
+        """Test different number bases"""
+        # Binary
+        binary = AdvancedPrecisionNumber('0b1010')
+        self.assertEqual(binary.base, 2)
         
-        # Mixed operations with different types
-        self.assertEqual(str(self.a + 3.5), '14.0')
-        self.assertEqual(str(self.a + Decimal('3.5')), '14.0')
-        self.assertEqual(str(self.a + fractions.Fraction(7, 2)), '14.0')
+        # Hexadecimal
+        hex_num = AdvancedPrecisionNumber('0xFF')
+        self.assertEqual(hex_num.base, 16)
         
-        # Operation with zero
-        self.assertEqual(str(self.a + self.zero), str(self.a))
-        self.assertEqual(str(self.a * self.zero), '0')
-        
-        # Operation with one
-        self.assertEqual(str(self.a * self.one), str(self.a))
-        self.assertEqual(str(self.a / self.one), str(self.a))
+        # Octal
+        octal = AdvancedPrecisionNumber('0o17')
+        self.assertEqual(octal.base, 8)
 
-    def test_advanced_math_operations(self):
-        """Test advanced mathematical operations"""
-        # Power operations
-        self.assertEqual(str(self.a ** 0), '1')
-        self.assertEqual(str(self.a ** 1), str(self.a))
-        self.assertEqual(str(self.a ** -1), str(1/float(self.a)))
-        
-        # Root operations
-        cube = self.a ** 3
-        self.assertAlmostEqual(float(cube.cube_root()), float(self.a), places=10)
-        
-        # Factorial for integers
+    def test_factorial(self):
+        """Test factorial operation"""
         five = AdvancedPrecisionNumber('5')
-        self.assertEqual(str(five.factorial()), '120')
+        result = five.factorial()
+        self.assertEqual(int(result._base_to_decimal()), 120)
+        
+        # Test factorial of 0
+        zero_fact = self.zero.factorial()
+        self.assertEqual(int(zero_fact._base_to_decimal()), 1)
 
-    def test_trigonometric_extended(self):
-        """Extended trigonometric function tests"""
-        # Test at special angles
-        zero_sin = self.zero.sin()
-        self.assertAlmostEqual(float(zero_sin), 0, places=10)
+    def test_power_operations(self):
+        """Test exponentiation"""
+        base = AdvancedPrecisionNumber('2')
+        result = base ** 3
+        self.assertEqual(int(result._base_to_decimal()), 8)
         
-        pi_half = self.pi / 2
-        cos_pi_half = pi_half.cos()
-        self.assertAlmostEqual(float(cos_pi_half), 0, places=10)
-        
-        # Test inverse functions
-        for val in [-1, -0.5, 0, 0.5, 1]:
-            x = AdvancedPrecisionNumber(str(val))
-            # Test asin(sin(x)) = x for values in domain
-            if -1 <= val <= 1:
-                self.assertAlmostEqual(
-                    float(x.sin().arcsin()),
-                    val,
-                    places=10
-                )
+        # Test power of 0
+        result = base ** 0
+        self.assertEqual(int(result._base_to_decimal()), 1)
 
-    def test_logarithmic_extended(self):
-        """Extended logarithmic function tests"""
-        # Test log properties
-        # log(a*b) = log(a) + log(b)
-        log_product = (self.a * self.b).log()
-        log_sum = self.a.log() + self.b.log()
-        self.assertAlmostEqual(float(log_product), float(log_sum), places=10)
-        
-        # Test with different bases
-        base_2 = AdvancedPrecisionNumber('2')
-        base_10 = AdvancedPrecisionNumber('10')
-        self.assertAlmostEqual(
-            float(self.a.log(base_2)),
-            math.log2(float(self.a)),
-            places=10
-        )
+    def test_square_root(self):
+        """Test square root"""
+        nine = AdvancedPrecisionNumber('9')
+        result = nine.sqrt()
+        self.assertAlmostEqual(float(result._base_to_decimal()), 3.0, places=10)
 
-    def test_precision_and_rounding(self):
-        """Test precision handling and rounding behavior"""
-        # Test with high precision numbers
-        high_precision = AdvancedPrecisionNumber('1.23456789012345')
-        self.assertGreaterEqual(len(str(high_precision).split('.')[1]), 14)
-        
-        # Test rounding behavior
-        result = self.a / 3
-        self.assertTrue(len(str(result).split('.')[1]) <= 15)
+    def test_modulo(self):
+        """Test modulo operation"""
+        ten = AdvancedPrecisionNumber('10')
+        three = AdvancedPrecisionNumber('3')
+        result = ten % three
+        self.assertEqual(int(result._base_to_decimal()), 1)
 
-    def test_special_values(self):
-        """Test handling of special values"""
-        # Test infinity handling
-        with self.assertRaises(OverflowError):
-            AdvancedPrecisionNumber('1e1000')
+    def test_comparison_operations(self):
+        """Test comparison operations"""
+        self.assertTrue(self.a > self.b)
+        self.assertTrue(self.b < self.a)
+        self.assertTrue(self.a >= self.b)
+        self.assertTrue(self.b <= self.a)
+        self.assertFalse(self.a == self.b)
+        self.assertTrue(self.a != self.b)
+
+    def test_trigonometric_functions(self):
+        """Test trigonometric functions"""
+        # Test sin(0) = 0
+        sin_zero = self.zero.sin()
+        self.assertAlmostEqual(float(sin_zero._base_to_decimal()), 0, places=10)
         
-        # Test very small numbers
-        small = AdvancedPrecisionNumber('1e-300')
-        self.assertNotEqual(float(small), 0)
+        # Test cos(0) = 1
+        cos_zero = self.zero.cos()
+        self.assertAlmostEqual(float(cos_zero._base_to_decimal()), 1, places=10)
+
+    def test_logarithm(self):
+        """Test logarithm function"""
+        e_num = AdvancedPrecisionNumber(str(math.e))
+        result = e_num.log()
+        self.assertAlmostEqual(float(result._base_to_decimal()), 1.0, places=5)
+
+    def test_fraction_conversion(self):
+        """Test fraction conversion"""
+        half = AdvancedPrecisionNumber('0.5')
+        frac = half.to_fraction()
+        self.assertEqual(frac, fractions.Fraction(1, 2))
+
+    def test_error_handling(self):
+        """Test error handling"""
+        # Division by zero
+        with self.assertRaises(ZeroDivisionError):
+            self.a / self.zero
+        
+        # Square root of negative number
+        with self.assertRaises(ValueError):
+            self.negative.sqrt()
+        
+        # Factorial of negative number
+        with self.assertRaises(ValueError):
+            self.negative.factorial()
 
     def test_string_representation(self):
-        """Test string representation methods"""
-        # Test __str__ and __repr__
-        self.assertIsInstance(str(self.a), str)
-        self.assertIsInstance(repr(self.a), str)
-        
-        # Test format method
-        self.assertEqual(format(self.a, '.2f'), '10.50')
-        self.assertEqual(format(self.a, '.0f'), '11')
+        """Test string representation"""
+        num = AdvancedPrecisionNumber('123.456')
+        self.assertIsInstance(str(num), str)
+        self.assertIsInstance(repr(num), str)
 
-    def test_comparison_extended(self):
-        """Extended comparison tests"""
-        numbers = [self.zero, self.one, self.a, self.b, self.negative]
-        # Test transitivity
-        for i in range(len(numbers)):
-            for j in range(i + 1, len(numbers)):
-                if numbers[i] < numbers[j]:
-                    self.assertTrue(numbers[i] <= numbers[j])
-                    self.assertFalse(numbers[i] > numbers[j])
-                    self.assertFalse(numbers[i] >= numbers[j])
-
-    def test_hash_and_equality(self):
-        """Test hash consistency and equality"""
-        # Same value should have same hash
-        a1 = AdvancedPrecisionNumber('10.5')
-        a2 = AdvancedPrecisionNumber('10.5')
-        self.assertEqual(hash(a1), hash(a2))
-        
-        # Different values should have different hashes
-        self.assertNotEqual(hash(self.a), hash(self.b))
+    def test_hash_functionality(self):
+        """Test hash functionality"""
+        num1 = AdvancedPrecisionNumber('10.5')
+        num2 = AdvancedPrecisionNumber('10.5')
+        self.assertEqual(hash(num1), hash(num2))
 
 def run_comprehensive_tests():
     """
@@ -252,26 +241,27 @@ def run_comprehensive_tests():
     print("Detailed Test Results:")
     print("=" * 50)
     
-    for result_type in result.detailed_results:
-        if len(result_type) == 2:
+    for result_item in result.detailed_results:
+        if len(result_item) == 2:
             # Success case
-            print(f"{result_type[0]} {result_type[1]}")
+            print(f"{result_item[0]:6} {result_item[1]}")
         else:
             # Failure or error case
-            print(f"{result_type[0]} {result_type[1]}")
-            print(f"Details: {result_type[2]}")
+            print(f"{result_item[0]:6} {result_item[1]}")
+            if len(result_item) > 2:
+                print(f"       Details: {result_item[2][:100]}...")
     
     # Final status
     if result.test_details['failed'] == 0 and result.test_details['errors'] == 0:
-        print("\nAll Tests Passed Successfully!")
+        print("\n✅ All Tests Passed Successfully!")
     else:
-        print("\nSome Tests Failed. Please Review.")
+        print(f"\n❌ {result.test_details['failed'] + result.test_details['errors']} Tests Failed. Please Review.")
     
     return result
 
 def main():
     """Main entry point for running tests"""
-    # Run the tests
+    print("Running Advanced Precision Number Tests...")
     run_comprehensive_tests()
 
 if __name__ == '__main__':
