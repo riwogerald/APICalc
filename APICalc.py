@@ -316,8 +316,8 @@ class AdvancedPrecisionNumber:
     
         # Handle signs
         if self.negative == other.negative:
-            result.negative = self.negative
             result = self._abs_add(other)
+            result.negative = self.negative
         else:
             # If signs differ, subtract absolute values
             if self._abs_compare(other) >= 0:
@@ -335,7 +335,10 @@ class AdvancedPrecisionNumber:
         carry = 0
     
         # Add fractional parts from right to left
-        for i in range(max(len(self.fractional_digits), len(other.fractional_digits)) - 1, -1, -1):
+        max_frac_len = max(len(self.fractional_digits), len(other.fractional_digits))
+        result.fractional_digits = [0] * max_frac_len
+        
+        for i in range(max_frac_len - 1, -1, -1):
             digit1 = self.fractional_digits[i] if i < len(self.fractional_digits) else 0
             digit2 = other.fractional_digits[i] if i < len(other.fractional_digits) else 0
         
@@ -394,9 +397,13 @@ class AdvancedPrecisionNumber:
         result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
         borrow = 0
     
+        # Ensure both have same fractional length
+        max_frac_len = max(len(self.fractional_digits), len(other.fractional_digits))
+        result.fractional_digits = [0] * max_frac_len
+        
         # Subtract fractional parts
-        for i in range(len(self.fractional_digits) - 1, -1, -1):
-            digit1 = self.fractional_digits[i]
+        for i in range(max_frac_len - 1, -1, -1):
+            digit1 = self.fractional_digits[i] if i < len(self.fractional_digits) else 0
             digit2 = other.fractional_digits[i] if i < len(other.fractional_digits) else 0
         
             # Handle borrow
@@ -455,46 +462,42 @@ class AdvancedPrecisionNumber:
         result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
         result.negative = self.negative != other.negative
 
-        # Separate handling for whole and fractional parts
-        whole_product = [0] * (len(self.whole_digits) + len(other.whole_digits))
-    
-        # Multiply whole parts
-        for i in range(len(self.whole_digits)-1, -1, -1):
-            carry = 0
-            for j in range(len(other.whole_digits)-1, -1, -1):
-                pos = i + j + 1
-                if pos < len(whole_product):
-                    temp = whole_product[pos] + self.whole_digits[i] * other.whole_digits[j] + carry
-                    whole_product[pos] = temp % self.base
-                    carry = temp // self.base
-            if carry and i > 0:
-                whole_product[i] = carry
-
-        # Remove leading zeros from whole part
-        while len(whole_product) > 1 and whole_product[0] == 0:
-            whole_product.pop(0)
-
-        # Handle fractional parts if present
-        frac_len = len(self.fractional_digits) + len(other.fractional_digits)
-        frac_product = [0] * min(frac_len, result.precision)
-
-        if frac_len > 0:
-            # Multiply including fractional parts
-            all_digits1 = self.whole_digits + self.fractional_digits
-            all_digits2 = other.whole_digits + other.fractional_digits
+        # Convert to single digit arrays for easier multiplication
+        self_digits = self.whole_digits + self.fractional_digits
+        other_digits = other.whole_digits + other.fractional_digits
         
-            for i in range(len(all_digits1)-1, -1, -1):
-                carry = 0
-                for j in range(len(all_digits2)-1, -1, -1):
-                    pos = i + j - len(self.fractional_digits) - len(other.fractional_digits)
-                    if 0 <= pos < len(frac_product):
-                        temp = frac_product[pos] + all_digits1[i] * all_digits2[j] + carry
-                        frac_product[pos] = temp % self.base
-                        carry = temp // self.base
+        # Calculate total fractional positions
+        self_frac_pos = len(self.fractional_digits)
+        other_frac_pos = len(other.fractional_digits)
+        total_frac_pos = self_frac_pos + other_frac_pos
+        
+        # Multiply digit arrays
+        product = [0] * (len(self_digits) + len(other_digits))
+        
+        for i in range(len(self_digits) - 1, -1, -1):
+            carry = 0
+            for j in range(len(other_digits) - 1, -1, -1):
+                pos = i + j + 1
+                temp = product[pos] + self_digits[i] * other_digits[j] + carry
+                product[pos] = temp % self.base
+                carry = temp // self.base
+            if carry:
+                product[i] += carry
 
-        # Set results
-        result.whole_digits = whole_product
-        result.fractional_digits = (frac_product + [0] * result.precision)[:result.precision]
+        # Remove leading zeros
+        while len(product) > 1 and product[0] == 0:
+            product.pop(0)
+
+        # Split back into whole and fractional parts
+        if total_frac_pos >= len(product):
+            # Result is purely fractional
+            result.whole_digits = [0]
+            result.fractional_digits = ([0] * (total_frac_pos - len(product)) + product)[:result.precision]
+        else:
+            # Split normally
+            split_pos = len(product) - total_frac_pos
+            result.whole_digits = product[:split_pos] if split_pos > 0 else [0]
+            result.fractional_digits = (product[split_pos:] + [0] * result.precision)[:result.precision]
 
         return result
 
@@ -616,7 +619,7 @@ class AdvancedPrecisionNumber:
             x = x * (AdvancedPrecisionNumber('2', self.base) - other * x)
         
             # Check for convergence
-            if abs(float(x) - float(prev_x)) < 1e-10:
+            if abs(float(x._base_to_decimal()) - float(prev_x._base_to_decimal())) < 1e-10:
                 break
     
         # Final multiplication to get result
@@ -698,31 +701,29 @@ class AdvancedPrecisionNumber:
 
     # Unary operations
     def sqrt(self):
-        """Calculate square root directly in base using digit-by-digit method"""
-        try:
-            # Input validation
-            if self.negative:
-                raise ValueError("Cannot calculate square root of negative number")
+        """Calculate square root directly in base using Newton's method"""
+        if self.negative:
+            raise ValueError("Cannot calculate square root of negative number")
         
-            if self._is_zero():
-                return AdvancedPrecisionNumber('0', self.base, self.precision)
+        if self._is_zero():
+            return AdvancedPrecisionNumber('0', self.base, self.precision)
 
-            # Use Newton's method for square root
-            x = AdvancedPrecisionNumber('1', self.base, self.precision)
-            two = AdvancedPrecisionNumber('2', self.base, self.precision)
-            
-            for _ in range(self.precision):
-                prev_x = x
+        # Use Newton's method for square root: x_{n+1} = (x_n + a/x_n) / 2
+        x = AdvancedPrecisionNumber('1', self.base, self.precision)
+        two = AdvancedPrecisionNumber('2', self.base, self.precision)
+        
+        for _ in range(max(50, self.precision)):
+            prev_x = x
+            try:
                 x = (x + self / x) / two
                 
                 # Check for convergence
-                if abs(float(x) - float(prev_x)) < 1e-15:
+                if abs(x._base_to_decimal() - prev_x._base_to_decimal()) < 1e-15:
                     break
-            
-            return x
-
-        except Exception as e:
-            raise ValueError(f"Error in square root calculation: {str(e)}")
+            except:
+                break
+        
+        return x
 
     def sqr(self):
         return self * self
@@ -743,12 +744,13 @@ class AdvancedPrecisionNumber:
             x_squared = x * x
             x = (AdvancedPrecisionNumber('2', self.base) * x + self / x_squared) / three
             
-            if abs(float(x) - float(prev_x)) < 1e-15:
+            if abs(x._base_to_decimal() - prev_x._base_to_decimal()) < 1e-15:
                 break
         
         return x
 
     def factorial(self):
+        """Calculate factorial for non-negative integers"""
         # Only for non-negative integers
         if self.negative or any(d != 0 for d in self.fractional_digits):
             raise ValueError("Factorial is only defined for non-negative integers")
