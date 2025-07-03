@@ -1,6 +1,25 @@
 # Advanced Precision Integer Calculator
 
-An arbitrary-precision integer calculator implemented in Python without relying on external libraries for core mathematical operations. This calculator supports multiple number bases, advanced mathematical functions, and provides a comprehensive REPL interface.
+## Problem Statement
+
+Write an arbitrary-precision-integer calculator in a language that doesn't have native support and without relying on any libraries for the core functionality. Wrap it in a REPL. It should support at least addition, subtraction, multiplication, division (and modulo), exponentiation and factorial. Bonus points for supporting non-decimal bases, fractions, logarithms, etc.
+
+## Overview
+
+An arbitrary-precision integer calculator implemented in Python without relying on external libraries for core mathematical operations. This calculator supports multiple number bases, advanced mathematical functions, and provides both a comprehensive REPL interface and a modern web-based frontend.
+
+## Architecture
+
+### Backend (Python)
+- **Core Engine**: `APICalc.py` - Pure Python implementation with arbitrary precision
+- **REPL Interface**: Command-line interface for direct calculator interaction
+- **Test Suite**: `test_APICalc.py` - Comprehensive testing framework
+
+### Frontend (React + TypeScript)
+- **Modern Web Interface**: Built with React, TypeScript, and Tailwind CSS
+- **Calculator Page**: Interactive calculator with visual button interface
+- **Test Interface**: Web-based test runner for validation
+- **Responsive Design**: Works seamlessly across desktop and mobile devices
 
 ## Features
 
@@ -45,7 +64,19 @@ An arbitrary-precision integer calculator implemented in Python without relying 
 
 ## Usage
 
-### Running the Calculator
+### Web Interface
+
+1. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+
+2. **Navigate to the application:**
+   - **Home Page**: Overview and navigation
+   - **Calculator**: Interactive calculator interface
+   - **Tests**: Web-based test runner
+
+### Command Line Interface
 
 ```bash
 python APICalc.py
@@ -60,6 +91,13 @@ python APICalc.py
 
 ### Example Usage
 
+#### Web Interface
+- Use the visual calculator buttons for easy input
+- Type expressions directly in the input field
+- View calculation history in the sidebar
+- Copy results to clipboard with one click
+
+#### Command Line
 ```
 >>> 123 + 456
 579
@@ -120,8 +158,10 @@ python APICalc.py
 
 ## Testing
 
-Run the comprehensive test suite:
+### Web Interface Tests
+Access the test interface through the web application to run comprehensive test suites with visual feedback.
 
+### Command Line Tests
 ```bash
 python test_APICalc.py
 ```
@@ -133,6 +173,40 @@ The test suite includes:
 - Error handling validation
 - Precision testing
 - Edge case handling
+
+## Development Setup
+
+### Prerequisites
+- Python 3.6 or higher
+- Node.js 16 or higher
+- npm or yarn
+
+### Installation
+
+1. **Clone the repository**
+2. **Install Python dependencies** (none required for core functionality)
+3. **Install Node.js dependencies:**
+   ```bash
+   npm install
+   ```
+4. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+
+### Project Structure
+
+```
+├── APICalc.py              # Core Python calculator engine
+├── test_APICalc.py         # Python test suite
+├── src/
+│   ├── components/         # React components
+│   ├── pages/             # Application pages
+│   ├── App.tsx            # Main React application
+│   └── main.tsx           # Application entry point
+├── public/                # Static assets
+└── package.json           # Node.js dependencies
+```
 
 ## Architecture
 
@@ -150,10 +224,18 @@ The test suite includes:
 
 ## Requirements
 
+### Backend
 - Python 3.6 or higher
 - No external dependencies for core functionality
 - Built-in `fractions` module for fraction support
 - Built-in `math` module for some advanced functions
+
+### Frontend
+- React 18+
+- TypeScript
+- Tailwind CSS
+- Vite (development server)
+- Modern web browser
 
 ## License
 
@@ -164,7 +246,7 @@ MIT License - see LICENSE file for details.
 1. Fork the repository
 2. Create a feature branch
 3. Add tests for new functionality
-4. Ensure all tests pass
+4. Ensure all tests pass (both Python and web interface)
 5. Submit a pull request
 
 ## Known Limitations
@@ -181,3 +263,6 @@ MIT License - see LICENSE file for details.
 - Matrix operations
 - Symbolic computation features
 - Performance optimizations for very large numbers
+- Backend API integration for web interface
+- Real-time collaboration features
+- Export/import calculation sessions
