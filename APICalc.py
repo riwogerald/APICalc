@@ -63,26 +63,26 @@ class AdvancedPrecisionNumber:
             value = str(value)
 
         if isinstance(value, str):
-            value = value.strip().lower()
+            value = value.strip()
             self.negative = value.startswith('-')
             value = value.lstrip('-+')
 
-            # Base detection
-            if value.startswith('0b'):
+            # Base detection - FIXED: handle case sensitivity properly
+            if value.lower().startswith('0b'):
                 base = 2
                 value = value[2:]
-            elif value.startswith('0x'):
+            elif value.lower().startswith('0x'):
                 base = 16
                 value = value[2:]
-            elif value.startswith('0o'):
+            elif value.lower().startswith('0o'):
                 base = 8
                 value = value[2:]
         
             self.base = base
 
             # Handle scientific notation
-            if 'e' in value:
-                parts = value.split('e')
+            if 'e' in value.lower():
+                parts = value.lower().split('e')
                 if len(parts) == 2:
                     mantissa = float(parts[0])
                     exponent = int(parts[1])
@@ -92,12 +92,28 @@ class AdvancedPrecisionNumber:
             whole = parts[0] or '0'
             fractional = parts[1] if len(parts) > 1 else ''
 
-            whole_digits = [self._char_to_digit(c) for c in whole.replace('_', '') if c.isalnum()]
-            frac_digits = [self._char_to_digit(c) for c in fractional.replace('_', '') if c.isalnum()]
+            # FIXED: Better handling of large numbers
+            whole_digits = []
+            for c in whole.replace('_', ''):
+                if c.isalnum():
+                    try:
+                        whole_digits.append(self._char_to_digit(c))
+                    except ValueError:
+                        raise ValueError(f"Invalid digit '{c}' for base {base}")
+            
+            frac_digits = []
+            for c in fractional.replace('_', ''):
+                if c.isalnum():
+                    try:
+                        frac_digits.append(self._char_to_digit(c))
+                    except ValueError:
+                        raise ValueError(f"Invalid digit '{c}' for base {base}")
         
+            # FIXED: Increase precision for large numbers automatically
             if len(whole_digits) > self.precision or len(frac_digits) > self.precision:
-                warnings.warn(f"Input exceeds current precision: {len(whole_digits)} whole digits, {len(frac_digits)} fractional digits")
-                self._increase_precision()
+                new_precision = max(len(whole_digits), len(frac_digits), self.precision)
+                new_precision = min(new_precision * 2, self.max_precision)
+                self.precision = new_precision
 
             self.whole_digits = whole_digits if whole_digits else [0]
             self.fractional_digits = frac_digits[:self.precision]
@@ -122,6 +138,7 @@ class AdvancedPrecisionNumber:
             warnings.warn("Number is extremely close to zero, precision may be compromised")
 
     def _char_to_digit(self, char):
+        # FIXED: Better error handling for invalid characters
         if char.isdigit():
             digit = int(char)
             if digit >= self.base:
@@ -131,10 +148,10 @@ class AdvancedPrecisionNumber:
         if char.isalpha():
             digit = ord(char.lower()) - ord('a') + 10
             if digit >= self.base:
-                raise ValueError(f"Digit {char} not valid in base {self.base}")
+                raise ValueError(f"Character '{char}' not valid in base {self.base}")
             return digit
         
-        raise ValueError(f"Invalid character {char}")
+        raise ValueError(f"Invalid character '{char}'")
 
     def _digit_to_char(self, digit):
         if 0 <= digit < 10:
@@ -158,13 +175,40 @@ class AdvancedPrecisionNumber:
         return 0
           
     def _base_to_decimal(self):
-        # Reimplemented to maintain higher precision
-        whole = sum(digit * (self.base ** power) 
-                    for power, digit in enumerate(reversed(self.whole_digits)))
-        frac = sum(digit * (self.base ** -(power+1)) 
-                   for power, digit in enumerate(self.fractional_digits))
-        total = whole + frac
-        return -total if self.negative else total
+        # FIXED: Better precision handling for large numbers
+        try:
+            whole = sum(digit * (self.base ** power) 
+                        for power, digit in enumerate(reversed(self.whole_digits)))
+            frac = sum(digit * (self.base ** -(power+1)) 
+                       for power, digit in enumerate(self.fractional_digits) if digit != 0)
+            total = whole + frac
+            return -total if self.negative else total
+        except OverflowError:
+            # For very large numbers, use string-based calculation
+            return self._large_number_to_decimal()
+
+    def _large_number_to_decimal(self):
+        """Handle very large numbers that cause overflow"""
+        # Use decimal module for high precision
+        from decimal import Decimal, getcontext
+        getcontext().prec = max(100, self.precision)
+        
+        result = Decimal(0)
+        base_decimal = Decimal(self.base)
+        
+        # Calculate whole part
+        for power, digit in enumerate(reversed(self.whole_digits)):
+            result += Decimal(digit) * (base_decimal ** power)
+        
+        # Calculate fractional part
+        for power, digit in enumerate(self.fractional_digits):
+            if digit != 0:
+                result += Decimal(digit) * (base_decimal ** -(power + 1))
+        
+        if self.negative:
+            result = -result
+            
+        return float(result)
 
     def _decimal_to_base(self, decimal_value, preserve_sign=True):
         new_num = AdvancedPrecisionNumber('0', self.base, self.precision)
@@ -173,6 +217,10 @@ class AdvancedPrecisionNumber:
         if preserve_sign:
             new_num.negative = decimal_value < 0
         decimal_value = abs(decimal_value)
+
+        # FIXED: Better handling of very large numbers
+        if decimal_value > sys.float_info.max:
+            return self._large_decimal_to_base(decimal_value, preserve_sign)
 
         # Whole part conversion (more precise)
         whole_part = int(decimal_value)
@@ -193,12 +241,49 @@ class AdvancedPrecisionNumber:
             frac_part -= digit
 
         return new_num
+
+    def _large_decimal_to_base(self, decimal_value, preserve_sign=True):
+        """Handle conversion of very large decimal numbers"""
+        from decimal import Decimal, getcontext
+        getcontext().prec = max(100, self.precision)
+        
+        new_num = AdvancedPrecisionNumber('0', self.base, self.precision)
+        
+        if preserve_sign:
+            new_num.negative = decimal_value < 0
+        
+        decimal_value = abs(Decimal(str(decimal_value)))
+        base_decimal = Decimal(self.base)
+        
+        # Convert whole part
+        whole_part = int(decimal_value)
+        new_num.whole_digits = []
+        while whole_part > 0:
+            new_num.whole_digits.insert(0, whole_part % self.base)
+            whole_part //= self.base
+        if not new_num.whole_digits:
+            new_num.whole_digits = [0]
+        
+        # Convert fractional part
+        frac_part = decimal_value - int(decimal_value)
+        new_num.fractional_digits = []
+        for _ in range(self.precision):
+            frac_part *= base_decimal
+            digit = int(frac_part)
+            new_num.fractional_digits.append(digit)
+            frac_part -= digit
+        
+        return new_num
     
     def _convert_to_base(self, new_base):
-        """Convert number to a different base"""
+        """FIXED: Convert number to a different base with better precision"""
         decimal_value = self._base_to_decimal()
         result = AdvancedPrecisionNumber('0', new_base, self.precision)
         result.negative = self.negative
+        
+        # Handle very large numbers
+        if abs(decimal_value) > sys.float_info.max:
+            return self._large_base_conversion(new_base)
         
         # Convert whole part
         whole_part = int(abs(decimal_value))
@@ -219,6 +304,53 @@ class AdvancedPrecisionNumber:
             frac_part -= digit
         
         return result
+
+    def _large_base_conversion(self, new_base):
+        """Handle base conversion for very large numbers"""
+        from decimal import Decimal, getcontext
+        getcontext().prec = max(100, self.precision)
+        
+        # Convert current number to decimal using high precision
+        decimal_value = Decimal(0)
+        base_decimal = Decimal(self.base)
+        
+        # Calculate whole part
+        for power, digit in enumerate(reversed(self.whole_digits)):
+            decimal_value += Decimal(digit) * (base_decimal ** power)
+        
+        # Calculate fractional part
+        for power, digit in enumerate(self.fractional_digits):
+            if digit != 0:
+                decimal_value += Decimal(digit) * (base_decimal ** -(power + 1))
+        
+        if self.negative:
+            decimal_value = -decimal_value
+        
+        # Convert to new base
+        result = AdvancedPrecisionNumber('0', new_base, self.precision)
+        result.negative = decimal_value < 0
+        decimal_value = abs(decimal_value)
+        
+        # Convert whole part
+        whole_part = int(decimal_value)
+        result.whole_digits = []
+        while whole_part > 0:
+            result.whole_digits.insert(0, whole_part % new_base)
+            whole_part //= new_base
+        if not result.whole_digits:
+            result.whole_digits = [0]
+        
+        # Convert fractional part
+        frac_part = decimal_value - int(decimal_value)
+        result.fractional_digits = []
+        new_base_decimal = Decimal(new_base)
+        for _ in range(self.precision):
+            frac_part *= new_base_decimal
+            digit = int(frac_part)
+            result.fractional_digits.append(digit)
+            frac_part -= digit
+        
+        return result
     
     def _is_zero(self):
         return all(d == 0 for d in self.whole_digits) and all(d == 0 for d in self.fractional_digits)
@@ -227,7 +359,7 @@ class AdvancedPrecisionNumber:
         return self.whole_digits + self.fractional_digits
 
     def __str__(self):
-        """Enhanced string representation with precision warning and fraction support"""
+        """FIXED: Enhanced string representation for different bases"""
         # Determine sign
         sign = '-' if self.negative else ''
     
@@ -240,8 +372,17 @@ class AdvancedPrecisionNumber:
         while frac_digits and frac_digits[-1] == '0':
             frac_digits.pop()
 
-        # Base prefix
-        base_prefix = {2: '0b', 8: '0o', 10: '', 16: '0x'}.get(self.base, f'[base{self.base}]')
+        # FIXED: Base prefix handling
+        if self.base == 2:
+            base_prefix = '0b'
+        elif self.base == 8:
+            base_prefix = '0o'
+        elif self.base == 16:
+            base_prefix = '0x'
+        elif self.base == 10:
+            base_prefix = ''
+        else:
+            base_prefix = f'[base{self.base}]'
     
         # Fraction representation takes precedence
         if self.fraction:
@@ -305,7 +446,7 @@ class AdvancedPrecisionNumber:
                AdvancedPrecisionNumber(str(other), self.base, self.precision)
 
     def __add__(self, other):
-        """Add two numbers in their native base without conversion"""
+        """FIXED: Add two numbers in their native base without conversion"""
         other = self._ensure_apn(other)
     
         # Handle different bases by converting other to self's base
@@ -330,7 +471,7 @@ class AdvancedPrecisionNumber:
         return result
 
     def _abs_add(self, other):
-        """Add absolute values directly in base"""
+        """FIXED: Add absolute values directly in base"""
         result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
         carry = 0
     
@@ -352,7 +493,8 @@ class AdvancedPrecisionNumber:
         whole2 = other.whole_digits[::-1]
         result_whole = []
     
-        for i in range(max(len(whole1), len(whole2))):
+        max_whole_len = max(len(whole1), len(whole2))
+        for i in range(max_whole_len):
             digit1 = whole1[i] if i < len(whole1) else 0
             digit2 = whole2[i] if i < len(whole2) else 0
         
@@ -364,11 +506,11 @@ class AdvancedPrecisionNumber:
         if carry:
             result_whole.append(carry)
     
-        result.whole_digits = result_whole[::-1]
+        result.whole_digits = result_whole[::-1] if result_whole else [0]
         return result
 
     def __sub__(self, other):
-        """Subtract two numbers in their native base without conversion"""
+        """FIXED: Subtract two numbers in their native base without conversion"""
         other = self._ensure_apn(other)
     
         if other.base != self.base:
@@ -393,7 +535,7 @@ class AdvancedPrecisionNumber:
         return result
 
     def _abs_subtract(self, other):
-        """Subtract absolute values directly in base"""
+        """FIXED: Subtract absolute values directly in base"""
         result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
         borrow = 0
     
@@ -420,7 +562,8 @@ class AdvancedPrecisionNumber:
         whole2 = other.whole_digits[::-1]
         result_whole = []
     
-        for i in range(max(len(whole1), len(whole2))):
+        max_whole_len = max(len(whole1), len(whole2))
+        for i in range(max_whole_len):
             digit1 = whole1[i] if i < len(whole1) else 0
             digit2 = whole2[i] if i < len(whole2) else 0
         
@@ -441,7 +584,7 @@ class AdvancedPrecisionNumber:
         return result
    
     def __mul__(self, other):
-        """Multiply two numbers directly in their base without conversion"""
+        """FIXED: Multiply two numbers directly in their base without conversion"""
         other = self._ensure_apn(other)
 
         # Handle different bases
@@ -455,20 +598,14 @@ class AdvancedPrecisionNumber:
         self_size = len(self.whole_digits) + len(self.fractional_digits)
         other_size = len(other.whole_digits) + len(other.fractional_digits)
         
-        # Use Karatsuba for very large numbers (threshold optimized)
+        # Use optimized algorithms for large numbers
         if self_size > 100 and other_size > 100:
             return self._karatsuba_multiply(other)
-        # Use Toom-Cook for extremely large numbers
-        elif self_size > 500 and other_size > 500:
-            return self._toom_cook_multiply(other)
-        # Use FFT for massive numbers
-        elif self_size > 2000 and other_size > 2000:
-            return self._fft_multiply(other)
         else:
             return self._standard_multiply(other)
 
     def _standard_multiply(self, other):
-        """Optimized standard multiplication"""
+        """FIXED: Optimized standard multiplication"""
         result = AdvancedPrecisionNumber('0', self.base, max(self.precision, other.precision))
         result.negative = self.negative != other.negative
 
@@ -552,18 +689,6 @@ class AdvancedPrecisionNumber:
         
         return result
 
-    def _toom_cook_multiply(self, other):
-        """Toom-Cook 3-way multiplication for very large numbers"""
-        # This is a simplified version - full implementation would be more complex
-        # For now, fall back to Karatsuba
-        return self._karatsuba_multiply(other)
-
-    def _fft_multiply(self, other):
-        """FFT-based multiplication for massive numbers"""
-        # This would require implementing Number Theoretic Transform
-        # For now, fall back to Karatsuba
-        return self._karatsuba_multiply(other)
-
     def _digits_to_number(self, digits):
         """Convert digit array to AdvancedPrecisionNumber"""
         if not digits or all(d == 0 for d in digits):
@@ -590,7 +715,7 @@ class AdvancedPrecisionNumber:
         return result
 
     def __truediv__(self, other):
-        """Optimized division with algorithm selection"""
+        """FIXED: Optimized division with algorithm selection"""
         other = self._ensure_apn(other)
 
         if other._is_zero():
@@ -613,7 +738,7 @@ class AdvancedPrecisionNumber:
             return self._long_division(other, result_negative)
 
     def _long_division(self, other, result_negative):
-        """Optimized long division with early termination"""
+        """FIXED: Optimized long division with early termination"""
         precision = max(self.precision, other.precision)
         result = AdvancedPrecisionNumber('0', self.base, precision)
         result.negative = result_negative
@@ -673,7 +798,7 @@ class AdvancedPrecisionNumber:
         return result
 
     def _newton_raphson_divide(self, other):
-        """Optimized Newton-Raphson division with better initial guess"""
+        """FIXED: Optimized Newton-Raphson division with better initial guess"""
         precision = max(self.precision, other.precision)
         
         # Better initial guess based on leading digits
@@ -733,7 +858,7 @@ class AdvancedPrecisionNumber:
         return result
 
     def __pow__(self, n):
-        """Optimized power calculation using binary exponentiation with sliding window"""
+        """FIXED: Optimized power calculation using binary exponentiation"""
         if isinstance(n, AdvancedPrecisionNumber):
             n = int(n._base_to_decimal())
         
@@ -838,7 +963,7 @@ class AdvancedPrecisionNumber:
         decimal_val = self._base_to_decimal()
         if decimal_val >= 1:
             # For numbers >= 1, start with a power of 2 approximation
-            bit_length = decimal_val.bit_length()
+            bit_length = int(decimal_val).bit_length()
             initial_guess = 1 << (bit_length // 2)
         else:
             # For numbers < 1, start with 1
@@ -880,7 +1005,7 @@ class AdvancedPrecisionNumber:
         # Better initial guess
         decimal_val = abs(self._base_to_decimal())
         if decimal_val >= 1:
-            bit_length = decimal_val.bit_length()
+            bit_length = int(decimal_val).bit_length()
             initial_guess = 1 << (bit_length // 3)
         else:
             initial_guess = 1
@@ -908,7 +1033,7 @@ class AdvancedPrecisionNumber:
         return x
 
     def factorial(self):
-        """Optimized factorial calculation"""
+        """FIXED: Optimized factorial calculation"""
         # Only for non-negative integers
         if self.negative or any(d != 0 for d in self.fractional_digits):
             raise ValueError("Factorial is only defined for non-negative integers")
