@@ -63,6 +63,54 @@ class ImprovedTestResult(unittest.TestResult):
             reason
         ))
 
+    def test_large_number_operations(self):
+        """Test operations with very large numbers"""
+        # Test large addition
+        large1 = AdvancedPrecisionNumber('123456789012345678901234567890')
+        large2 = AdvancedPrecisionNumber('987654321098765432109876543210')
+        result = large1 + large2
+        expected = '1111111110111111111011111111100'
+        self.assertEqual(str(result._base_to_decimal()), expected)
+        
+        # Test large multiplication
+        num1 = AdvancedPrecisionNumber('123456789')
+        num2 = AdvancedPrecisionNumber('987654321')
+        result = num1 * num2
+        expected = '121932631137021795'
+        # Convert result to string and check
+        result_str = str(int(float(result._base_to_decimal())))
+        self.assertEqual(result_str, expected)
+        
+        # Test factorial of larger number
+        ten = AdvancedPrecisionNumber('10')
+        result = ten.factorial()
+        expected = 3628800
+        self.assertEqual(int(result._base_to_decimal()), expected)
+
+    def test_binary_hex_operations(self):
+        """Test binary and hexadecimal operations"""
+        # Binary operations
+        bin1 = AdvancedPrecisionNumber('0b1010')  # 10 in decimal
+        bin2 = AdvancedPrecisionNumber('0b1100')  # 12 in decimal
+        
+        # Test binary addition
+        result = bin1 + bin2
+        expected_decimal = 10 + 12  # 22
+        self.assertEqual(int(result._base_to_decimal()), expected_decimal)
+        
+        # Hexadecimal operations
+        hex1 = AdvancedPrecisionNumber('0xFF')    # 255 in decimal
+        hex2 = AdvancedPrecisionNumber('0x10')    # 16 in decimal
+        
+        # Test hex multiplication
+        result = hex1 * hex2
+        expected_decimal = 255 * 16  # 4080
+        self.assertEqual(int(result._base_to_decimal()), expected_decimal)
+        
+        # Test mixed base operations
+        result = bin1 + hex2  # 10 + 16 = 26
+        self.assertEqual(int(result._base_to_decimal()), 26)
+
 class TestAdvancedPrecisionNumber(unittest.TestCase):
     def setUp(self):
         """Set up method to create instances for testing"""
