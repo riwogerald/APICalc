@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Play, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react'
+import React, { useState } from 'react'
+import { Play, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
 
 interface TestCase {
   id: string
