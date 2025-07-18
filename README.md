@@ -10,6 +10,7 @@ An arbitrary-precision integer calculator implemented in Python without relying 
 
 Here's what the dashboard looks like:
 ![Main dashboard for the API Calculator.](screenshots/dashboard.png)
+Live Link: https://apicalculator-v1.netlify.app/
 
 ## Architecture
 
