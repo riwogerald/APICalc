@@ -8,6 +8,9 @@ Write an arbitrary-precision-integer calculator in a language that doesn't have 
 
 An arbitrary-precision integer calculator implemented in Python without relying on external libraries for core mathematical operations. This calculator supports multiple number bases, advanced mathematical functions, and provides both a comprehensive REPL interface and a modern web-based frontend.
 
+Here's what the dashboard looks like:
+![Main dashboard for the API Calculator.](screenshots/dashboard.png)
+
 ## Architecture
 
 ### Backend (Python)
@@ -97,6 +100,9 @@ python APICalc.py
 - View calculation history in the sidebar
 - Copy results to clipboard with one click
 
+Here's how the calculator looks:
+![API Calculator.](screenshots/calc.png)
+
 #### Command Line
 ```
 >>> 123 + 456
@@ -173,6 +179,12 @@ The test suite includes:
 - Error handling validation
 - Precision testing
 - Edge case handling
+
+Test Interface:
+![Test Cases for the API Calculator.](screenshots/tests1.png)
+
+Test Results:
+![Test Results for the API Calculator.](screenshots/tests2.png)
 
 ## Development Setup
 
