@@ -101,8 +101,9 @@ python APICalc.py
 - View calculation history in the sidebar
 - Copy results to clipboard with one click
 
-Here's how the calculator looks:
+Here's how the calculator interface looks:
 ![API Calculator.](screenshots/calc.png)
+![API Calculator.](screenshots/calc2.png)
 
 #### Command Line
 ```
