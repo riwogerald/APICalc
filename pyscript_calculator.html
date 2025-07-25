@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Precision Calculator - PyScript</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">
+                    Advanced Precision Calculator
+                </h1>
+                <p class="text-gray-600">
+                    Python-powered calculator running directly in your browser
+                </p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <!-- Input Section -->
+                <div class="mb-6">
+                    <label for="expression" class="block text-sm font-medium text-gray-700 mb-2">
+                        Enter mathematical expression:
+                    </label>
+                    <input 
+                        type="text" 
+                        id="expression" 
+                        placeholder="e.g., 123 + 456, factorial(10), sqrt(16), 0b1010 + 0xFF"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-lg"
+                    />
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex gap-3 mb-6">
+                    <button 
+                        id="calculate-btn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                    >
+                        <span id="calc-text">Calculate</span>
+                        <div id="calc-spinner" class="spinner hidden"></div>
+                    </button>
+                    
+                    <button 
+                        id="clear-btn"
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium"
+                    >
+                        Clear
+                    </button>
+                </div>
+
+                <!-- Result Section -->
+                <div id="result-section" class="hidden mb-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-blue-700">Result:</span>
+                            <button id="copy-btn" class="text-blue-600 hover:text-blue-700 text-sm">
+                                📋 Copy
+                            </button>
+                        </div>
+                        <div id="result" class="text-xl font-mono text-blue-900 break-all"></div>
+                    </div>
+                </div>
+
+                <!-- Error Section -->
+                <div id="error-section" class="hidden mb-6">
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <span class="text-sm font-medium text-red-700">Error:</span>
+                        <div id="error" class="text-red-900 mt-1"></div>
+                    </div>
+                </div>
+
+                <!-- Examples -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-3">Examples:</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                        <button class="example-btn text-left p-2 rounded hover:bg-gray-100" data-expr="123 + 456">
+                            <code class="text-blue-600">123 + 456</code> - Basic arithmetic
+                        </button>
+                        <button class="example-btn text-left p-2 rounded hover:bg-gray-100" data-expr="factorial(10)">
+                            <code class="text-blue-600">factorial(10)</code> - Factorial
+                        </button>
+                        <button class="example-btn text-left p-2 rounded hover:bg-gray-100" data-expr="sqrt(16)">
+                            <code class="text-blue-600">sqrt(16)</code> - Square root
+                        </button>
+                        <button class="example-btn text-left p-2 rounded hover:bg-gray-100" data-expr="2 ** 100">
+                            <code class="text-blue-600">2 ** 100</code> - Large exponentiation
+                        </button>
+                        <button class="example-btn text-left p-2 rounded hover:bg-gray-100" data-expr="0b1010 + 0xFF">
+                            <code class="text-blue-600">0b1010 + 0xFF</code> - Base conversion
+                        </button>
+                        <button class="example-btn text-left p-2 rounded hover:bg-gray-100" data-expr="sin(3.14159/2)">
+                            <code class="text-blue-600">sin(3.14159/2)</code> - Trigonometry
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Python Code -->
+    <py-script>
+import js
+import fractions
+import sys
+import warnings
+import math
+
+# Simplified version of AdvancedPrecisionNumber for browser use
+class SimplePrecisionNumber:
+    def __init__(self, value='0', base=10):
+        self.base = base
+        self.negative = False
+        self.value = 0
+        
+        if isinstance(value, str):
+            self._parse_string(value)
+        else:
+            self.value = float(value)
+    
+    def _parse_string(self, value):
+        value = value.strip()
+        self.negative = value.startswith('-')
+        value = value.lstrip('-+')
+        
+        # Base detection
+        if value.lower().startswith('0b'):
+            self.base = 2
+            self.value = int(value[2:], 2)
+        elif value.lower().startswith('0x'):
+            self.base = 16
+            self.value = int(value[2:], 16)
+        elif value.lower().startswith('0o'):
+            self.base = 8
+            self.value = int(value[2:], 8)
+        else:
+            self.value = float(value)
+        
+        if self.negative:
+            self.value = -self.value
+    
+    def __add__(self, other):
+        if isinstance(other, SimplePrecisionNumber):
+            return SimplePrecisionNumber(str(self.value + other.value))
+        return SimplePrecisionNumber(str(self.value + float(other)))
+    
+    def __sub__(self, other):
+        if isinstance(other, SimplePrecisionNumber):
+            return SimplePrecisionNumber(str(self.value - other.value))
+        return SimplePrecisionNumber(str(self.value - float(other)))
+    
+    def __mul__(self, other):
+        if isinstance(other, SimplePrecisionNumber):
+            return SimplePrecisionNumber(str(self.value * other.value))
+        return SimplePrecisionNumber(str(self.value * float(other)))
+    
+    def __truediv__(self, other):
+        other_val = other.value if isinstance(other, SimplePrecisionNumber) else float(other)
+        if other_val == 0:
+            raise ZeroDivisionError("Division by zero")
+        return SimplePrecisionNumber(str(self.value / other_val))
+    
+    def __pow__(self, other):
+        other_val = other.value if isinstance(other, SimplePrecisionNumber) else float(other)
+        return SimplePrecisionNumber(str(self.value ** other_val))
+    
+    def factorial(self):
+        if self.value < 0 or self.value != int(self.value):
+            raise ValueError("Factorial only defined for non-negative integers")
+        
+        n = int(self.value)
+        result = 1
+        for i in range(2, n + 1):
+            result *= i
+        return SimplePrecisionNumber(str(result))
+    
+    def sqrt(self):
+        if self.value < 0:
+            raise ValueError("Square root of negative number")
+        return SimplePrecisionNumber(str(math.sqrt(self.value)))
+    
+    def sin(self):
+        return SimplePrecisionNumber(str(math.sin(self.value)))
+    
+    def cos(self):
+        return SimplePrecisionNumber(str(math.cos(self.value)))
+    
+    def tan(self):
+        return SimplePrecisionNumber(str(math.tan(self.value)))
+    
+    def log(self, base=None):
+        if self.value <= 0:
+            raise ValueError("Logarithm undefined for non-positive numbers")
+        if base:
+            base_val = base.value if isinstance(base, SimplePrecisionNumber) else float(base)
+            return SimplePrecisionNumber(str(math.log(self.value, base_val)))
+        return SimplePrecisionNumber(str(math.log(self.value)))
+    
+    def __str__(self):
+        # Format based on original base
+        if self.base == 2:
+            return f"0b{bin(int(self.value))[2:]}" if self.value == int(self.value) else str(self.value)
+        elif self.base == 16:
+            return f"0x{hex(int(self.value))[2:]}" if self.value == int(self.value) else str(self.value)
+        elif self.base == 8:
+            return f"0o{oct(int(self.value))[2:]}" if self.value == int(self.value) else str(self.value)
+        else:
+            # Format nicely for large integers
+            if self.value == int(self.value) and abs(self.value) > 1e15:
+                return str(int(self.value))
+            elif self.value == int(self.value):
+                return str(int(self.value))
+            else:
+                return str(self.value)
+
+def calculate_expression(expression):
+    try:
+        # Handle function calls
+        if "factorial(" in expression:
+            import re
+            match = re.search(r'factorial\(([^)]+)\)', expression)
+            if match:
+                arg = match.group(1)
+                num = SimplePrecisionNumber(arg)
+                return str(num.factorial())
+        
+        if "sqrt(" in expression:
+            import re
+            match = re.search(r'sqrt\(([^)]+)\)', expression)
+            if match:
+                arg = match.group(1)
+                num = SimplePrecisionNumber(arg)
+                return str(num.sqrt())
+        
+        if "sin(" in expression:
+            import re
+            match = re.search(r'sin\(([^)]+)\)', expression)
+            if match:
+                arg = match.group(1)
+                # Evaluate the argument first
+                arg_val = eval(arg) if arg.replace('.','').replace('-','').replace('+','').replace('/','').replace('*','').replace('(','').replace(')','').replace(' ','').isdigit() or '/' in arg else float(arg)
+                num = SimplePrecisionNumber(str(arg_val))
+                return str(num.sin())
+        
+        # Handle basic expressions with different bases
+        # Replace base literals
+        expression = expression.replace(' ', '')
+        
+        # Convert base literals to decimal for evaluation
+        import re
+        # Binary
+        expression = re.sub(r'0b([01]+)', lambda m: str(int(m.group(1), 2)), expression)
+        # Hex
+        expression = re.sub(r'0x([0-9a-fA-F]+)', lambda m: str(int(m.group(1), 16)), expression)
+        # Octal
+        expression = re.sub(r'0o([0-7]+)', lambda m: str(int(m.group(1), 8)), expression)
+        
+        # Handle ** operator (Python power operator)
+        expression = expression.replace('**', ' ** ')
+        
+        # For simple expressions, use eval (in a controlled way)
+        allowed_chars = set('0123456789+-*/().** ')
+        if all(c in allowed_chars for c in expression):
+            result = eval(expression)
+            return str(result)
+        
+        return "Unsupported expression format"
+        
+    except ZeroDivisionError:
+        return "Error: Division by zero"
+    except ValueError as e:
+        return f"Error: {str(e)}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# JavaScript interface functions
+def calculate(expression):
+    result = calculate_expression(expression)
+    
+    # Update UI
+    result_section = js.document.getElementById("result-section")
+    error_section = js.document.getElementById("error-section")
+    result_div = js.document.getElementById("result")
+    error_div = js.document.getElementById("error")
+    
+    if result.startswith("Error:"):
+        # Show error
+        result_section.classList.add("hidden")
+        error_section.classList.remove("hidden")
+        error_div.textContent = result[7:]  # Remove "Error: " prefix
+    else:
+        # Show result
+        error_section.classList.add("hidden")
+        result_section.classList.remove("hidden")
+        result_div.textContent = result
+
+def clear_all():
+    js.document.getElementById("expression").value = ""
+    js.document.getElementById("result-section").classList.add("hidden")
+    js.document.getElementById("error-section").classList.add("hidden")
+
+def copy_result():
+    result_text = js.document.getElementById("result").textContent
+    js.navigator.clipboard.writeText(result_text)
+    # Visual feedback
+    copy_btn = js.document.getElementById("copy-btn")
+    original_text = copy_btn.textContent
+    copy_btn.textContent = "✅ Copied!"
+    js.setTimeout(lambda: setattr(copy_btn, 'textContent', original_text), 2000)
+
+# Event handlers
+def handle_calculate():
+    expression = js.document.getElementById("expression").value.strip()
+    if not expression:
+        return
+    
+    # Show loading state
+    calc_btn = js.document.getElementById("calculate-btn")
+    calc_text = js.document.getElementById("calc-text")
+    calc_spinner = js.document.getElementById("calc-spinner")
+    
+    calc_text.textContent = "Calculating..."
+    calc_spinner.classList.remove("hidden")
+    calc_btn.disabled = True
+    
+    # Calculate with small delay for UX
+    def do_calculate():
+        calculate(expression)
+        # Reset button state
+        calc_text.textContent = "Calculate"
+        calc_spinner.classList.add("hidden")
+        calc_btn.disabled = False
+    
+    js.setTimeout(do_calculate, 100)
+
+def handle_example_click(event):
+    expression = event.target.closest('.example-btn').getAttribute('data-expr')
+    js.document.getElementById("expression").value = expression
+
+# Bind event listeners
+js.document.getElementById("calculate-btn").addEventListener("click", handle_calculate)
+js.document.getElementById("clear-btn").addEventListener("click", clear_all)
+js.document.getElementById("copy-btn").addEventListener("click", copy_result)
+
+# Example buttons
+example_buttons = js.document.querySelectorAll(".example-btn")
+for button in example_buttons:
+    button.addEventListener("click", handle_example_click)
+
+# Enter key support
+def handle_keypress(event):
+    if event.key == "Enter":
+        handle_calculate()
+
+js.document.getElementById("expression").addEventListener("keypress", handle_keypress)
+
+print("🚀 Advanced Precision Calculator loaded successfully!")
+print("💡 Try entering expressions like: factorial(10), sqrt(16), 2**100")
+    </py-script>
+</body>
+</html>
