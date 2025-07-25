@@ -66,8 +66,8 @@ const CalculatorPage: React.FC = () => {
 
   const simulateCalculation = async (expression: string): Promise<string> => {
     try {
-      // Import the local JavaScript calculator
-      const AdvancedCalculator = await import('../utils/calculator.js')
+      // Import the local TypeScript calculator
+      const AdvancedCalculator = await import('../utils/calculator')
       
       // Simulate a small delay to match API behavior
       await new Promise(resolve => setTimeout(resolve, 100))
