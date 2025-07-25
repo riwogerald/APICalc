@@ -190,33 +190,22 @@ const TestPage: React.FC = () => {
   }
 
   const mockCalculation = async (expression: string): Promise<string> => {
-    // Mock implementation - in real app, this would call your Python backend
-    if (expression.includes('/ 0')) {
-      return 'Error: Division by zero'
-    }
-    if (expression.includes('+ +')) {
-      return 'Error: Invalid expression'
-    }
-    if (expression === 'factorial(5)') return '120'
-    if (expression === 'factorial(10)') return '3628800'
-    if (expression === 'sqrt(16)') return '4'
-    if (expression === '2 ** 10') return '1024'
-    if (expression === '123 + 456') return '579'
-    if (expression === '1000 - 234') return '766'
-    if (expression === '25 * 4') return '100'
-    if (expression === '100 / 4') return '25'
-    
-    // For other expressions, try basic evaluation
     try {
-      const sanitized = expression.replace(/[^0-9+\-*/().\s]/g, '')
-      if (sanitized === expression) {
-        return eval(sanitized).toString()
+      // Import the local JavaScript calculator
+      const AdvancedCalculator = await import('../utils/calculator.js')
+      
+      // Use the local calculator
+      const result = AdvancedCalculator.default.calculate(expression)
+      
+      // Check if result is an error
+      if (typeof result === 'string' && result.startsWith('Error:')) {
+        return result // Return error as-is
       }
+      
+      return result
     } catch (error) {
-      // Ignore
+      return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
-    
-    return 'Mock result'
   }
 
   const runAllTests = async () => {
