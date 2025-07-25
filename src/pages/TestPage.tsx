@@ -191,8 +191,8 @@ const TestPage: React.FC = () => {
 
   const mockCalculation = async (expression: string): Promise<string> => {
     try {
-      // Import the local JavaScript calculator
-      const AdvancedCalculator = await import('../utils/calculator.js')
+      // Import the local TypeScript calculator
+      const AdvancedCalculator = await import('../utils/calculator')
       
       // Use the local calculator
       const result = AdvancedCalculator.default.calculate(expression)
