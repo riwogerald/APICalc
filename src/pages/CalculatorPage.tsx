@@ -66,26 +66,26 @@ const CalculatorPage: React.FC = () => {
 
   const simulateCalculation = async (expression: string): Promise<string> => {
     try {
-      const response = await fetch('http://localhost:5000/api/calculate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ expression })
-      })
+      // Import the local JavaScript calculator
+      const AdvancedCalculator = await import('../utils/calculator.js')
       
-      const data = await response.json()
+      // Simulate a small delay to match API behavior
+      await new Promise(resolve => setTimeout(resolve, 100))
       
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Calculation failed')
+      // Use the local calculator
+      const result = AdvancedCalculator.default.calculate(expression)
+      
+      // Check if result is an error
+      if (typeof result === 'string' && result.startsWith('Error:')) {
+        throw new Error(result.substring(7)) // Remove 'Error: ' prefix
       }
       
-      return data.result
+      return result
     } catch (error) {
       if (error instanceof Error) {
         throw error
       }
-      throw new Error('Failed to connect to calculator API')
+      throw new Error('Calculation failed')
     }
   }
 
