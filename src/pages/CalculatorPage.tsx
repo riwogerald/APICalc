@@ -43,8 +43,7 @@ const CalculatorPage: React.FC = () => {
 
     setIsLoading(true)
     try {
-      // For now, we'll simulate the calculation
-      // In a real implementation, this would call your Python backend
+      // Call the Python backend API
       const mockResult = await simulateCalculation(input)
       
       setResult(mockResult)
@@ -66,22 +65,27 @@ const CalculatorPage: React.FC = () => {
   }
 
   const simulateCalculation = async (expression: string): Promise<string> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    // Basic expression evaluation (in real app, this would call your Python backend)
     try {
-      // Remove any potential security risks and evaluate basic expressions
-      const sanitized = expression.replace(/[^0-9+\-*/().\s]/g, '')
-      if (sanitized !== expression) {
-        throw new Error('Invalid characters in expression')
+      const response = await fetch('http://localhost:5000/api/calculate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ expression })
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Calculation failed')
       }
       
-      // For demo purposes, use eval (in production, use your Python backend)
-      const result = eval(sanitized)
-      return result.toString()
+      return data.result
     } catch (error) {
-      throw new Error('Invalid expression')
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error('Failed to connect to calculator API')
     }
   }
 
