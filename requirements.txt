@@ -1,0 +1,12 @@
+# Core calculator (no external dependencies needed for core functionality)
+# Built-in modules: fractions, math, sys, warnings, decimal
+
+# API Server dependencies
+Flask==2.3.3
+Flask-CORS==4.0.0
+Werkzeug==2.3.7
+
+# Development dependencies (optional)
+pytest==7.4.3
+black==23.9.1
+flake8==6.1.0
