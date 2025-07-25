@@ -50,6 +50,12 @@ const AdvancedCalculator = {
                 return this.handleSqrt(expr);
             }
             
+            // Handle trigonometric functions (case-insensitive)
+            const exprLower = expr.toLowerCase();
+            if (exprLower.includes('sin(') || exprLower.includes('cos(') || exprLower.includes('tan(')) {
+                return this.handleTrigonometric(expr);
+            }
+            
             if (expr.includes('0b') || expr.includes('0x')) {
                 return this.handleBaseConversion(expr);
             }
@@ -95,6 +101,33 @@ const AdvancedCalculator = {
             return Math.sqrt(n).toString();
         }
         throw new Error('Invalid sqrt expression');
+    },
+    
+    // Handle trigonometric functions
+    handleTrigonometric: function(expr: string): string {
+        // Handle sin, cos, tan (case-insensitive)
+        const sinMatch = expr.match(/sin\(([^)]+)\)/i);
+        if (sinMatch) {
+            const n = parseFloat(sinMatch[1]);
+            if (isNaN(n)) throw new Error('Invalid argument for sin function');
+            return Math.sin(n).toString();
+        }
+        
+        const cosMatch = expr.match(/cos\(([^)]+)\)/i);
+        if (cosMatch) {
+            const n = parseFloat(cosMatch[1]);
+            if (isNaN(n)) throw new Error('Invalid argument for cos function');
+            return Math.cos(n).toString();
+        }
+        
+        const tanMatch = expr.match(/tan\(([^)]+)\)/i);
+        if (tanMatch) {
+            const n = parseFloat(tanMatch[1]);
+            if (isNaN(n)) throw new Error('Invalid argument for tan function');
+            return Math.tan(n).toString();
+        }
+        
+        throw new Error('Invalid trigonometric expression');
     },
     
     // Handle base conversions
