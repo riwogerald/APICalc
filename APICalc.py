@@ -1197,9 +1197,9 @@ def calculate_repl():
     calculation_history = []
 
     def print_menu():
-        print("\n" + "═" * 60)
+        print("\n" + "=" * 60)
         print(f"{'ADVANCED PRECISION CALCULATOR':^60}")
-        print("═" * 60)
+        print("=" * 60)
         print(f"{'OPERATION':^25}{'SYNTAX EXAMPLE':^35}")
         print("-" * 60)
         print(f"{'Addition':^25}{'4 + 5':^35}")
@@ -1220,10 +1220,10 @@ def calculate_repl():
         print(f"{'Trigonometric':^25}{'sin(1), cos(1), tan(1)':^35}")
         print(f"{'Inverse Trig':^25}{'arcsin(0.5), arccos(0.5)':^35}")
         print(f"{'Fractions':^25}{'to_fraction()':^35}")
-        print("═" * 60)
+        print("=" * 60)
         print("Commands: 'menu' (help), 'history' (show history), 'clear' (clear history), 'quit' (exit)")
         print("Performance: Optimized for very large numbers with Karatsuba, Toom-Cook, and FFT algorithms")
-        print("═" * 60)
+        print("=" * 60)
 
     def safe_eval(expr):
         """Safely evaluate mathematical expressions"""
@@ -1391,14 +1391,22 @@ def calculate_repl():
             if not raw_expr:
                 continue
 
-            # Handle function calls
-            if any(func in raw_expr for func in ['factorial(', 'sqrt(', 'sin(', 'cos(', 'tan(', 'log(']):
+            # Handle function calls (case-insensitive)
+            raw_expr_lower = raw_expr.lower()
+            if any(func in raw_expr_lower for func in ['factorial(', 'sqrt(', 'sqr(', 'cube(', 'cube_root(', 'inverse(',
+                                                       'sin(', 'cos(', 'tan(', 'arcsin(', 'arccos(', 'arctan(', 
+                                                       'log(', 'exp(']):
                 # Extract function and argument
                 for func_name in ['factorial', 'sqrt', 'sqr', 'cube', 'cube_root', 'inverse', 
-                                  'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'log']:
-                    if f'{func_name}(' in raw_expr:
-                        start = raw_expr.find(f'{func_name}(') + len(func_name) + 1
-                        end = raw_expr.find(')', start)
+                                  'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'log', 'exp']:
+                    if f'{func_name}(' in raw_expr_lower:
+                        # Find the actual function name in original expression (preserve case)
+                        start_pos = raw_expr_lower.find(f'{func_name}(')
+                        actual_func_start = start_pos
+                        actual_func_end = start_pos + len(func_name)
+                        
+                        start = raw_expr_lower.find(f'{func_name}(') + len(func_name) + 1
+                        end = raw_expr_lower.find(')', start)
                         if end != -1:
                             arg = raw_expr[start:end].strip()
                             
