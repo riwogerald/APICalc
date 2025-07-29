@@ -1,10 +1,7 @@
 import unittest
 import sys
-import fractions
 import warnings
-import math
 import random
-from decimal import Decimal
 
 # Import the module
 from APICalc import AdvancedPrecisionNumber
