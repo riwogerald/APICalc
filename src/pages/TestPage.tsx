@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
-import { Play, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Play, CheckCircle, XCircle, RefreshCw, Cpu, Wifi, WifiOff } from 'lucide-react'
+import pythonCalculator from '../utils/pythonCalculator'
 
 interface TestCase {
   id: string
@@ -148,6 +149,7 @@ const TestPage: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [runningTestId, setRunningTestId] = useState<string | null>(null)
+  const [pythonStatus, setPythonStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
   const categories = ['All', ...Array.from(new Set(testCases.map(test => test.category)))]
 
@@ -155,16 +157,53 @@ const TestPage: React.FC = () => {
     ? testCases 
     : testCases.filter(test => test.category === selectedCategory)
 
+  // Initialize Python calculator on component mount
+  useEffect(() => {
+    const initializePython = async () => {
+      try {
+        setPythonStatus('loading')
+        await pythonCalculator.initialize()
+        setPythonStatus('ready')
+        console.log('🐍 Python calculator ready for tests!')
+      } catch (error) {
+        console.error('Failed to initialize Python calculator:', error)
+        setPythonStatus('error')
+      }
+    }
+
+    initializePython()
+  }, [])
+
+  const callPythonCalculator = async (expression: string): Promise<string> => {
+    try {
+      // Use the direct Python calculator
+      const result = await pythonCalculator.calculate(expression)
+      return result
+    } catch (error) {
+      // Fallback to TypeScript calculator if Python fails
+      console.warn('Python calculator failed, falling back to TypeScript:', error)
+      return await fallbackCalculation(expression)
+    }
+  }
+
+  const fallbackCalculation = async (expression: string): Promise<string> => {
+    try {
+      // Import the local TypeScript calculator as fallback
+      const AdvancedCalculator = await import('../utils/calculator')
+      const result = AdvancedCalculator.default.calculate(expression)
+      return result
+    } catch (error) {
+      return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+
   const runSingleTest = async (testCase: TestCase): Promise<TestResult> => {
     const startTime = Date.now()
     setRunningTestId(testCase.id)
     
     try {
-      // Simulate API call to Python backend
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 200))
-      
-      // Mock calculation result (in real app, this would call your Python backend)
-      const actual = await mockCalculation(testCase.expression)
+      // Call Python calculator directly
+      const actual = await callPythonCalculator(testCase.expression)
       const duration = Date.now() - startTime
       
       return {
@@ -189,24 +228,6 @@ const TestPage: React.FC = () => {
     }
   }
 
-  const mockCalculation = async (expression: string): Promise<string> => {
-    try {
-      // Import the local TypeScript calculator
-      const AdvancedCalculator = await import('../utils/calculator')
-      
-      // Use the local calculator
-      const result = AdvancedCalculator.default.calculate(expression)
-      
-      // Check if result is an error
-      if (typeof result === 'string' && result.startsWith('Error:')) {
-        return result // Return error as-is
-      }
-      
-      return result
-    } catch (error) {
-      return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-    }
-  }
 
   const runAllTests = async () => {
     setIsRunning(true)
@@ -245,9 +266,33 @@ const TestPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Test Suite Interface
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             Comprehensive testing for the Advanced Precision Calculator
           </p>
+          
+          {/* Python Engine Status */}
+          <div className="inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm">
+            <Cpu className="w-4 h-4" />
+            <span>Python Engine:</span>
+            {pythonStatus === 'loading' && (
+              <>
+                <div className="spinner" />
+                <span className="text-blue-600">Loading...</span>
+              </>
+            )}
+            {pythonStatus === 'ready' && (
+              <>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-green-600 font-medium">Ready</span>
+              </>
+            )}
+            {pythonStatus === 'error' && (
+              <>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="text-red-600 font-medium">Error (using fallback)</span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Test Controls */}
