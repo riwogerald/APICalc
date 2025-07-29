@@ -1,6 +1,4 @@
-import fractions
-import sys
-import warnings
+# Pure implementation - no external library dependencies for core functionality
 
 class AdvancedPrecisionNumber:
     # Predefined precision modes
@@ -9,6 +7,71 @@ class AdvancedPrecisionNumber:
         'high': 200,        # More precise calculations
         'extreme': 1000     # For scientific/mathematical computations
     }
+    
+    # Mathematical constants for pure implementation
+    @classmethod
+    def _get_pi(cls, precision=50):
+        """Calculate Pi using Machin's formula: π/4 = 4*arctan(1/5) - arctan(1/239)"""
+        # Calculate arctan(1/5) and arctan(1/239) using Taylor series
+        arctan_1_5 = cls._arctan_taylor(cls('0.2', 10, precision), precision)
+        arctan_1_239 = cls._arctan_taylor(cls(str(1/239), 10, precision), precision)
+        
+        # π/4 = 4*arctan(1/5) - arctan(1/239)
+        pi_quarter = cls('4', 10, precision) * arctan_1_5 - arctan_1_239
+        
+        # π = 4 * (π/4)
+        pi = cls('4', 10, precision) * pi_quarter
+        return pi
+    
+    @classmethod
+    def _get_e(cls, precision=50):
+        """Calculate e using Taylor series: e = Σ(1/n!) for n=0 to infinity"""
+        result = cls('1', 10, precision)  # Start with 1
+        factorial = cls('1', 10, precision)
+        
+        for n in range(1, precision * 2):  # More terms for better precision
+            factorial = factorial * cls(str(n), 10, precision)
+            term = cls('1', 10, precision) / factorial
+            result = result + term
+            
+            # Early termination if term becomes negligible
+            if term._base_to_decimal() < 10**(-precision):
+                break
+        
+        return result
+    
+    @classmethod
+    def _arctan_taylor(cls, x, precision=50):
+        """Calculate arctan(x) using Taylor series: arctan(x) = x - x³/3 + x⁵/5 - x⁷/7 + ..."""
+        if abs(x._base_to_decimal()) >= 1:
+            # For |x| >= 1, use arctan(x) = π/2 - arctan(1/x) if x > 0
+            # or arctan(x) = -π/2 - arctan(1/x) if x < 0
+            pi_half = cls._get_pi(precision) / cls('2', 10, precision)
+            if x._base_to_decimal() > 0:
+                return pi_half - cls._arctan_taylor(cls('1', 10, precision) / x, precision)
+            else:
+                return -pi_half - cls._arctan_taylor(cls('1', 10, precision) / x, precision)
+        
+        result = cls('0', 10, precision)
+        x_squared = x * x
+        x_power = x
+        sign = 1
+        
+        for n in range(1, precision * 4, 2):  # Odd terms only
+            term = x_power / cls(str(n), 10, precision)
+            if sign > 0:
+                result = result + term
+            else:
+                result = result - term
+            
+            x_power = x_power * x_squared
+            sign *= -1
+            
+            # Early termination
+            if abs(term._base_to_decimal()) < 10**(-precision):
+                break
+        
+        return result
 
     def __init__(self, value='0', base=10, precision_mode='standard', max_precision=1000, fraction=None):
         # Initialize basic attributes directly
@@ -22,15 +85,20 @@ class AdvancedPrecisionNumber:
         self.fraction = None
 
         try:
-            # Handle fraction input first
+            # Handle fraction input first - pure implementation
             if fraction is not None:
-                if isinstance(fraction, (int, float, str)):
-                    fraction = fractions.Fraction(fraction)
-            
-                if isinstance(fraction, fractions.Fraction):
-                    self.fraction = fraction
-                    decimal_value = float(fraction)
+                if isinstance(fraction, tuple) and len(fraction) == 2:
+                    # fraction as (numerator, denominator)
+                    num, den = fraction
+                    decimal_value = float(num) / float(den)
                     value = str(decimal_value)
+                elif isinstance(fraction, str) and '/' in fraction:
+                    # fraction as "3/4"
+                    parts = fraction.split('/')
+                    if len(parts) == 2:
+                        num, den = int(parts[0]), int(parts[1])
+                        decimal_value = float(num) / float(den)
+                        value = str(decimal_value)
 
             # Parse input
             if isinstance(value, AdvancedPrecisionNumber):
@@ -39,7 +107,7 @@ class AdvancedPrecisionNumber:
                 self._parse_input(value)
 
         except Exception as e:
-            warnings.warn(f"Potential precision issue: {e}")
+            print(f"Warning: Potential precision issue: {e}")
             self.precision_loss_warning = True
     
     def _copy_from(self, other):
@@ -129,13 +197,17 @@ class AdvancedPrecisionNumber:
             self.precision_loss_warning = True
 
     def _check_numeric_limits(self, value):
-        """Enhanced numeric limit checking"""
-        if abs(value) > sys.float_info.max:
-            warnings.warn("Number exceeds maximum representable value")
+        """Enhanced numeric limit checking - Pure implementation"""
+        # Use approximate values instead of sys.float_info
+        max_float = 1.7976931348623157e+308  # approximate sys.float_info.max
+        min_float = 2.2250738585072014e-308  # approximate sys.float_info.min
+        
+        if abs(value) > max_float:
+            print("Warning: Number exceeds maximum representable value")
             self._increase_precision()
         
-        if 0 < abs(value) < sys.float_info.min:
-            warnings.warn("Number is extremely close to zero, precision may be compromised")
+        if 0 < abs(value) < min_float:
+            print("Warning: Number is extremely close to zero, precision may be compromised")
 
     def _char_to_digit(self, char):
         # FIXED: Better error handling for invalid characters
@@ -1115,52 +1187,153 @@ class AdvancedPrecisionNumber:
         one = AdvancedPrecisionNumber('1', self.base, self.precision)
         return one / self
 
-    # Trigonometric Functions
+    # Pure Trigonometric Functions - No library dependencies
     def sin(self):
-        """Calculate sine"""
-        import math
-        decimal_val = self._base_to_decimal()
-        sin_result = math.sin(decimal_val)
-        return AdvancedPrecisionNumber(str(sin_result), self.base, self.precision)
+        """Calculate sine using Taylor series"""
+        # Use angle reduction to bring to [-π/2, π/2]
+        pi = self._get_pi(self.precision)
+        two_pi = pi * AdvancedPrecisionNumber('2', self.base, self.precision)
+        
+        # Reduce angle to [0, 2π]
+        x = self
+        while x._base_to_decimal() > two_pi._base_to_decimal():
+            x = x - two_pi
+        while x._base_to_decimal() < 0:
+            x = x + two_pi
+        
+        # Further reduce to [-π/2, π/2] for better convergence
+        pi_half = pi / AdvancedPrecisionNumber('2', self.base, self.precision)
+        if x._base_to_decimal() > pi_half._base_to_decimal():
+            if x._base_to_decimal() <= (pi_half * AdvancedPrecisionNumber('3', self.base, self.precision))._base_to_decimal():
+                # sin(π - x) = sin(x)
+                x = pi - x
+            else:
+                # sin(2π - x) = -sin(x)
+                x = two_pi - x
+                return -self._sin_taylor(x)
+        
+        return self._sin_taylor(x)
+    
+    def _sin_taylor(self, x):
+        """Calculate sin(x) using Taylor series: sin(x) = x - x³/3! + x⁵/5! - x⁷/7! + ..."""
+        result = AdvancedPrecisionNumber('0', self.base, self.precision)
+        x_power = x
+        x_squared = x * x
+        factorial = AdvancedPrecisionNumber('1', self.base, self.precision)
+        sign = 1
+        
+        for n in range(1, self.precision * 4, 2):  # Odd terms only
+            factorial = factorial * AdvancedPrecisionNumber(str(n), self.base, self.precision)
+            if n > 1:
+                factorial = factorial * AdvancedPrecisionNumber(str(n-1), self.base, self.precision)
+            
+            term = x_power / factorial
+            if sign > 0:
+                result = result + term
+            else:
+                result = result - term
+            
+            x_power = x_power * x_squared
+            sign *= -1
+            
+            # Early termination
+            if abs(term._base_to_decimal()) < 10**(-self.precision):
+                break
+        
+        return result
 
     def cos(self):
-        """Calculate cosine"""
-        import math
-        decimal_val = self._base_to_decimal()
-        cos_result = math.cos(decimal_val)
-        return AdvancedPrecisionNumber(str(cos_result), self.base, self.precision)
-
+        """Calculate cosine using Taylor series"""
+        # cos(x) = sin(π/2 - x)
+        pi_half = self._get_pi(self.precision) / AdvancedPrecisionNumber('2', self.base, self.precision)
+        return (pi_half - self).sin()
+    
     def tan(self):
-        """Calculate tangent"""
-        import math
-        decimal_val = self._base_to_decimal()
-        tan_result = math.tan(decimal_val)
-        return AdvancedPrecisionNumber(str(tan_result), self.base, self.precision)
+        """Calculate tangent as sin(x)/cos(x)"""
+        sin_val = self.sin()
+        cos_val = self.cos()
+        
+        if cos_val._is_zero():
+            raise ValueError("Tangent undefined (cosine is zero)")
+        
+        return sin_val / cos_val
 
     def arcsin(self):
-        """Calculate arcsine"""
-        import math
+        """Calculate arcsine using Newton's method"""
         decimal_val = self._base_to_decimal()
         if abs(decimal_val) > 1:
             raise ValueError("Arcsine argument must be between -1 and 1")
-        arcsin_result = math.asin(decimal_val)
-        return AdvancedPrecisionNumber(str(arcsin_result), self.base, self.precision)
+        
+        if abs(decimal_val) == 1:
+            pi_half = self._get_pi(self.precision) / AdvancedPrecisionNumber('2', self.base, self.precision)
+            return pi_half if decimal_val > 0 else -pi_half
+        
+        # Use series expansion for small values, Newton's method for others
+        if abs(decimal_val) < 0.5:
+            return self._arcsin_series()
+        else:
+            return self._arcsin_newton()
+    
+    def _arcsin_series(self):
+        """Calculate arcsin(x) using series: arcsin(x) = x + x³/6 + 3x⁵/40 + ..."""
+        result = AdvancedPrecisionNumber('0', self.base, self.precision)
+        x = self
+        x_squared = x * x
+        x_power = x
+        
+        # First term
+        result = x
+        
+        # Subsequent terms using the recurrence relation
+        for n in range(1, self.precision):
+            coeff_num = AdvancedPrecisionNumber(str(2*n - 1), self.base, self.precision)
+            coeff_den = AdvancedPrecisionNumber(str(2*n), self.base, self.precision)
+            power_den = AdvancedPrecisionNumber(str(2*n + 1), self.base, self.precision)
+            
+            x_power = x_power * x_squared
+            term = (coeff_num / coeff_den) * (x_power / power_den)
+            result = result + term
+            
+            # Early termination
+            if abs(term._base_to_decimal()) < 10**(-self.precision):
+                break
+        
+        return result
+    
+    def _arcsin_newton(self):
+        """Calculate arcsin(x) using Newton's method"""
+        # Initial guess
+        x = AdvancedPrecisionNumber(str(self._base_to_decimal()), self.base, self.precision)
+        
+        for _ in range(50):
+            sin_x = x.sin()
+            cos_x = x.cos()
+            
+            if cos_x._is_zero():
+                break
+                
+            # Newton iteration: x_new = x - (sin(x) - target) / cos(x)
+            x_new = x - (sin_x - self) / cos_x
+            
+            if abs(x_new._base_to_decimal() - x._base_to_decimal()) < 1e-15:
+                break
+                
+            x = x_new
+        
+        return x
 
     def arccos(self):
-        """Calculate arccosine"""
-        import math
+        """Calculate arccosine using identity: arccos(x) = π/2 - arcsin(x)"""
         decimal_val = self._base_to_decimal()
         if abs(decimal_val) > 1:
             raise ValueError("Arccosine argument must be between -1 and 1")
-        arccos_result = math.acos(decimal_val)
-        return AdvancedPrecisionNumber(str(arccos_result), self.base, self.precision)
+        
+        pi_half = self._get_pi(self.precision) / AdvancedPrecisionNumber('2', self.base, self.precision)
+        return pi_half - self.arcsin()
 
     def arctan(self):
-        """Calculate arctangent"""
-        import math
-        decimal_val = self._base_to_decimal()
-        arctan_result = math.atan(decimal_val)
-        return AdvancedPrecisionNumber(str(arctan_result), self.base, self.precision)
+        """Calculate arctangent using pure Taylor series or arctan_taylor method"""
+        return self._arctan_taylor(self, self.precision)
 
     def to_fraction(self, limit_denominator=None):
         """Convert the number to a Fraction with optional denominator limit"""
