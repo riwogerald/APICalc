@@ -21,13 +21,22 @@ class CalculatorAPI:
         """Safely evaluate mathematical expressions"""
         try:
             # Handle function calls
-            if any(func in expression for func in ['factorial(', 'sqrt(', 'sin(', 'cos(', 'tan(', 'log(']):
+            if any(func in expression.lower() for func in ['factorial(', 'sqrt(', 'sin(', 'cos(', 'tan(', 'log(']):
                 return self.handle_function_call(expression)
             
-            # Handle simple expressions using existing logic from REPL
-            tokens = self.safe_eval(expression)
-            result = self.evaluate_expression(tokens)
-            return str(result)
+            # Handle simple binary arithmetic - direct evaluation for now
+            try:
+                # For basic expressions, try direct evaluation
+                if all(c in '0123456789+-*/.() ' for c in expression):
+                    # Basic arithmetic using eval for simplicity
+                    result = eval(expression)
+                    return str(result)
+                else:
+                    # Try to parse as single number (handles bases)
+                    num = AdvancedPrecisionNumber(expression)
+                    return str(num)
+            except:
+                raise ValueError(f"Unsupported expression: {expression}")
             
         except Exception as e:
             raise ValueError(f"Invalid expression: {str(e)}")
@@ -36,8 +45,8 @@ class CalculatorAPI:
         """Handle function calls like factorial(5), sqrt(16), etc."""
         for func_name in ['factorial', 'sqrt', 'sqr', 'cube', 'cube_root', 'inverse', 
                           'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'log', 'exp']:
-            if f'{func_name}(' in expression:
-                start = expression.find(f'{func_name}(') + len(func_name) + 1
+            if f'{func_name}(' in expression.lower():
+                start = expression.lower().find(f'{func_name}(') + len(func_name) + 1
                 end = expression.find(')', start)
                 if end != -1:
                     arg = expression[start:end].strip()
@@ -55,122 +64,7 @@ class CalculatorAPI:
                     return str(result)
         
         raise ValueError("Unknown function")
-    
-    def safe_eval(self, expr):
-        """Safely tokenize mathematical expressions"""
-        tokens = []
-        current_token = ""
-        operators = ['+', '-', '*', '/', '%', '(', ')', '**', '//', '!']
-        
-        i = 0
-        while i < len(expr):
-            char = expr[i]
-            
-            # Handle multi-character operators
-            if i < len(expr) - 1:
-                two_char = expr[i:i+2]
-                if two_char in ['**', '//']:
-                    if current_token:
-                        tokens.append(current_token.strip())
-                        current_token = ""
-                    tokens.append(two_char)
-                    i += 2
-                    continue
-            
-            if char in operators:
-                if current_token:
-                    tokens.append(current_token.strip())
-                    current_token = ""
-                tokens.append(char)
-            else:
-                current_token += char
-            
-            i += 1
-        
-        if current_token:
-            tokens.append(current_token.strip())
-        
-        # Convert numeric tokens to AdvancedPrecisionNumber
-        for i, token in enumerate(tokens):
-            if token not in operators and token.strip():
-                try:
-                    tokens[i] = AdvancedPrecisionNumber(token)
-                except:
-                    pass
-        
-        return tokens
-    
-    def evaluate_expression(self, tokens):
-        """Evaluate tokenized expression with proper operator precedence"""
-        if len(tokens) == 1:
-            return tokens[0]
-        
-        # Handle factorial first
-        i = 0
-        while i < len(tokens):
-            if tokens[i] == '!':
-                if i > 0:
-                    result = tokens[i-1].factorial()
-                    tokens = tokens[:i-1] + [result] + tokens[i+1:]
-                    i -= 1
-                else:
-                    raise ValueError("Invalid factorial usage")
-            i += 1
-        
-        # Handle exponentiation (right-to-left)
-        i = len(tokens) - 1
-        while i >= 0:
-            if tokens[i] == '**':
-                if i > 0 and i < len(tokens) - 1:
-                    result = tokens[i-1] ** tokens[i+1]
-                    tokens = tokens[:i-1] + [result] + tokens[i+2:]
-                    i -= 2
-                else:
-                    raise ValueError("Invalid exponentiation")
-            i -= 1
-        
-        # Handle multiplication, division, modulo (left-to-right)
-        i = 0
-        while i < len(tokens):
-            if tokens[i] in ['*', '/', '//', '%']:
-                if i > 0 and i < len(tokens) - 1:
-                    if tokens[i] == '*':
-                        result = tokens[i-1] * tokens[i+1]
-                    elif tokens[i] == '/':
-                        result = tokens[i-1] / tokens[i+1]
-                    elif tokens[i] == '//':
-                        result = tokens[i-1] // tokens[i+1]
-                    elif tokens[i] == '%':
-                        result = tokens[i-1] % tokens[i+1]
-                    
-                    tokens = tokens[:i-1] + [result] + tokens[i+2:]
-                    i -= 1
-                else:
-                    raise ValueError(f"Invalid {tokens[i]} operation")
-            i += 1
-        
-        # Handle addition and subtraction (left-to-right)
-        i = 0
-        while i < len(tokens):
-            if tokens[i] in ['+', '-']:
-                if i > 0 and i < len(tokens) - 1:
-                    if tokens[i] == '+':
-                        result = tokens[i-1] + tokens[i+1]
-                    elif tokens[i] == '-':
-                        result = tokens[i-1] - tokens[i+1]
-                    
-                    tokens = tokens[:i-1] + [result] + tokens[i+2:]
-                    i -= 1
-                else:
-                    raise ValueError(f"Invalid {tokens[i]} operation")
-            i += 1
-        
-        if len(tokens) == 1:
-            return tokens[0]
-        else:
-            raise ValueError("Could not evaluate expression")
 
-# Create calculator instance
 calculator = CalculatorAPI()
 
 @app.route('/api/calculate', methods=['POST'])

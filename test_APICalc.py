@@ -1,7 +1,7 @@
 import unittest
 import sys
-import warnings
-import random
+import math
+import fractions
 
 # Import the module
 from APICalc import AdvancedPrecisionNumber
@@ -209,13 +209,19 @@ class TestAdvancedPrecisionNumber(unittest.TestCase):
 
     def test_trigonometric_functions(self):
         """Test trigonometric functions"""
-        # Test sin(0) = 0
-        sin_zero = self.zero.sin()
-        self.assertAlmostEqual(float(sin_zero._base_to_decimal()), 0, places=10)
+        # Test sin(pi/2) = 1
+        pi_half = AdvancedPrecisionNumber(str(math.pi / 2))
+        sin_pi_half = pi_half.sin()
+        self.assertAlmostEqual(float(sin_pi_half._base_to_decimal()), 1, places=5)
         
         # Test cos(0) = 1
         cos_zero = self.zero.cos()
         self.assertAlmostEqual(float(cos_zero._base_to_decimal()), 1, places=10)
+        
+        # Test tan(pi/4) = 1
+        pi_quarter = AdvancedPrecisionNumber(str(math.pi / 4))
+        tan_pi_quarter = pi_quarter.tan()
+        self.assertAlmostEqual(float(tan_pi_quarter._base_to_decimal()), 1, places=5)
 
     def test_logarithm(self):
         """Test logarithm function"""

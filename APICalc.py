@@ -1,4 +1,6 @@
 # Pure implementation - no external library dependencies for core functionality
+import sys
+import fractions
 
 class AdvancedPrecisionNumber:
     # Predefined precision modes
@@ -283,49 +285,22 @@ class AdvancedPrecisionNumber:
         return float(result)
 
     def _decimal_to_base(self, decimal_value, preserve_sign=True):
+        """Unified method to convert decimal to any base with automatic precision handling"""
         new_num = AdvancedPrecisionNumber('0', self.base, self.precision)
-    
+        
         # Preserve sign
         if preserve_sign:
             new_num.negative = decimal_value < 0
         decimal_value = abs(decimal_value)
-
-        # FIXED: Better handling of very large numbers
-        if decimal_value > sys.float_info.max:
-            return self._large_decimal_to_base(decimal_value, preserve_sign)
-
-        # Whole part conversion (more precise)
-        whole_part = int(decimal_value)
-        new_num.whole_digits = []
-        while whole_part > 0:
-            new_num.whole_digits.insert(0, whole_part % self.base)
-            whole_part //= self.base
-        if not new_num.whole_digits:
-            new_num.whole_digits = [0]
-
-        # Fractional part conversion (improved)
-        frac_part = decimal_value - int(decimal_value)
-        new_num.fractional_digits = []
-        for _ in range(self.precision):
-            frac_part *= self.base
-            digit = int(frac_part)
-            new_num.fractional_digits.append(digit)
-            frac_part -= digit
-
-        return new_num
-
-    def _large_decimal_to_base(self, decimal_value, preserve_sign=True):
-        """Handle conversion of very large decimal numbers"""
-        from decimal import Decimal, getcontext
-        getcontext().prec = max(100, self.precision)
         
-        new_num = AdvancedPrecisionNumber('0', self.base, self.precision)
+        # Use high precision for large numbers
+        use_decimal = abs(decimal_value) > 1e15 or self.precision > 50
         
-        if preserve_sign:
-            new_num.negative = decimal_value < 0
-        
-        decimal_value = abs(Decimal(str(decimal_value)))
-        base_decimal = Decimal(self.base)
+        if use_decimal:
+            from decimal import Decimal, getcontext
+            getcontext().prec = max(100, self.precision)
+            decimal_value = Decimal(str(decimal_value))
+            base_decimal = Decimal(self.base)
         
         # Convert whole part
         whole_part = int(decimal_value)
@@ -339,11 +314,20 @@ class AdvancedPrecisionNumber:
         # Convert fractional part
         frac_part = decimal_value - int(decimal_value)
         new_num.fractional_digits = []
+        
         for _ in range(self.precision):
-            frac_part *= base_decimal
+            if use_decimal:
+                frac_part *= base_decimal
+            else:
+                frac_part *= self.base
             digit = int(frac_part)
             new_num.fractional_digits.append(digit)
             frac_part -= digit
+            
+            # Early termination if remaining fraction is negligible
+            if abs(float(frac_part)) < 1e-15:
+                new_num.fractional_digits.extend([0] * (self.precision - len(new_num.fractional_digits)))
+                break
         
         return new_num
     
@@ -1064,10 +1048,12 @@ class AdvancedPrecisionNumber:
         return x
 
     def sqr(self):
-        return self * self
+        """Square the number using optimized power method"""
+        return self ** 2
 
     def cube(self):
-        return self * self * self
+        """Cube the number using optimized power method"""
+        return self ** 3
 
     def cube_root(self):
         """Optimized cube root using Newton's method"""
