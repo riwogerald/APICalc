@@ -4,7 +4,7 @@ import math
 import fractions
 
 # Import the module
-from APICalc import AdvancedPrecisionNumber
+from APICalc import AdvancedPrecisionNumber, ComplexNumber
 
 class ImprovedTestResult(unittest.TestResult):
     """
@@ -261,12 +261,317 @@ class TestAdvancedPrecisionNumber(unittest.TestCase):
         num2 = AdvancedPrecisionNumber('10.5')
         self.assertEqual(hash(num1), hash(num2))
 
+class TestComplexNumber(unittest.TestCase):
+    def setUp(self):
+        """Set up method to create complex number instances for testing"""
+        self.z1 = ComplexNumber('3', '4')  # 3+4i
+        self.z2 = ComplexNumber('1', '2')  # 1+2i
+        self.z_real = ComplexNumber('5', '0')  # 5+0i (real number)
+        self.z_imag = ComplexNumber('0', '3')  # 0+3i (pure imaginary)
+        self.z_zero = ComplexNumber('0', '0')  # 0+0i
+        self.z_negative = ComplexNumber('-2', '-3')  # -2-3i
+
+    def test_initialization_basic(self):
+        """Test basic initialization of complex numbers"""
+        # Test basic initialization
+        z = ComplexNumber('3', '4')
+        self.assertEqual(str(z), '3+4i')
+        
+        # Test negative imaginary part
+        z_neg = ComplexNumber('3', '-4')
+        self.assertEqual(str(z_neg), '3-4i')
+        
+        # Test zero cases
+        self.assertEqual(str(self.z_zero), '0')
+        self.assertEqual(str(self.z_real), '5')
+        self.assertEqual(str(self.z_imag), '3i')
+
+    def test_string_parsing(self):
+        """Test parsing complex numbers from strings"""
+        # Test standard format
+        z1 = ComplexNumber.from_string('3+4i')
+        self.assertEqual(str(z1), '3+4i')
+        
+        # Test negative imaginary
+        z2 = ComplexNumber.from_string('3-4i')
+        self.assertEqual(str(z2), '3-4i')
+        
+        # Test pure imaginary
+        z3 = ComplexNumber.from_string('5i')
+        self.assertEqual(str(z3), '5i')
+        
+        # Test pure real
+        z4 = ComplexNumber.from_string('7')
+        self.assertEqual(str(z4), '7')
+        
+        # Test j notation
+        z5 = ComplexNumber.from_string('2+3j')
+        self.assertEqual(str(z5), '2+3i')
+        
+        # Test unit imaginary
+        z6 = ComplexNumber.from_string('i')
+        self.assertEqual(str(z6), 'i')
+        
+        # Test negative unit imaginary
+        z7 = ComplexNumber.from_string('-i')
+        self.assertEqual(str(z7), '-i')
+
+    def test_polar_form(self):
+        """Test polar form creation and conversion"""
+        # Create from polar coordinates
+        import math
+        magnitude = AdvancedPrecisionNumber('5')
+        phase = AdvancedPrecisionNumber(str(math.pi/4))  # 45 degrees
+        z_polar = ComplexNumber.from_polar(magnitude, phase)
+        
+        # Check magnitude
+        self.assertAlmostEqual(float(z_polar.abs()._base_to_decimal()), 5.0, places=5)
+        
+        # Check that it's approximately 5*cos(pi/4) + 5*sin(pi/4)i
+        expected_real = 5 * math.cos(math.pi/4)
+        expected_imag = 5 * math.sin(math.pi/4)
+        self.assertAlmostEqual(float(z_polar.real._base_to_decimal()), expected_real, places=5)
+        self.assertAlmostEqual(float(z_polar.imag._base_to_decimal()), expected_imag, places=5)
+
+    def test_basic_arithmetic(self):
+        """Test basic arithmetic operations with complex numbers"""
+        # Addition: (3+4i) + (1+2i) = (4+6i)
+        result = self.z1 + self.z2
+        self.assertEqual(str(result), '4+6i')
+        
+        # Subtraction: (3+4i) - (1+2i) = (2+2i)
+        result = self.z1 - self.z2
+        self.assertEqual(str(result), '2+2i')
+        
+        # Multiplication: (3+4i) * (1+2i) = (3-8) + (6+4)i = -5+10i
+        result = self.z1 * self.z2
+        self.assertEqual(str(result), '-5+10i')
+        
+        # Division: (3+4i) / (1+2i)
+        result = self.z1 / self.z2
+        # (3+4i)/(1+2i) = (3+4i)(1-2i)/((1+2i)(1-2i)) = (3+8+4i-6i)/(1+4) = (11-2i)/5 = 2.2-0.4i
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), 2.2, places=10)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), -0.4, places=10)
+
+    def test_mixed_arithmetic(self):
+        """Test arithmetic between complex and real numbers"""
+        # Complex + real
+        result = self.z1 + 2  # (3+4i) + 2 = (5+4i)
+        self.assertEqual(str(result), '5+4i')
+        
+        # Real + complex
+        result = 2 + self.z1  # 2 + (3+4i) = (5+4i)
+        self.assertEqual(str(result), '5+4i')
+        
+        # Complex * real
+        result = self.z1 * 2  # (3+4i) * 2 = (6+8i)
+        self.assertEqual(str(result), '6+8i')
+        
+        # Complex / real
+        result = self.z1 / 2  # (3+4i) / 2 = (1.5+2i)
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), 1.5, places=10)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), 2.0, places=10)
+
+    def test_power_operations(self):
+        """Test exponentiation of complex numbers"""
+        # Test i^2 = -1
+        i = ComplexNumber('0', '1')
+        result = i ** 2
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), -1.0, places=10)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), 0.0, places=10)
+        
+        # Test i^4 = 1
+        result = i ** 4
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), 1.0, places=5)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), 0.0, places=5)
+        
+        # Test (1+i)^2 = 1 + 2i + i^2 = 1 + 2i - 1 = 2i
+        z = ComplexNumber('1', '1')
+        result = z ** 2
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), 0.0, places=10)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), 2.0, places=10)
+
+    def test_conjugate(self):
+        """Test complex conjugate"""
+        # Conjugate of (3+4i) should be (3-4i)
+        conj = self.z1.conjugate()
+        self.assertEqual(str(conj), '3-4i')
+        
+        # Conjugate of real number should be itself
+        conj_real = self.z_real.conjugate()
+        self.assertEqual(str(conj_real), '5')
+        
+        # Conjugate of pure imaginary should flip sign
+        conj_imag = self.z_imag.conjugate()
+        self.assertEqual(str(conj_imag), '-3i')
+
+    def test_magnitude_and_argument(self):
+        """Test magnitude (absolute value) and argument (phase)"""
+        # Magnitude of (3+4i) should be 5
+        mag = self.z1.abs()
+        self.assertAlmostEqual(float(mag._base_to_decimal()), 5.0, places=10)
+        
+        # Magnitude of real number
+        mag_real = self.z_real.abs()
+        self.assertAlmostEqual(float(mag_real._base_to_decimal()), 5.0, places=10)
+        
+        # Magnitude of pure imaginary
+        mag_imag = self.z_imag.abs()
+        self.assertAlmostEqual(float(mag_imag._base_to_decimal()), 3.0, places=10)
+        
+        # Argument of (1+i) should be pi/4
+        z_45deg = ComplexNumber('1', '1')
+        arg = z_45deg.arg()
+        import math
+        self.assertAlmostEqual(float(arg._base_to_decimal()), math.pi/4, places=5)
+
+    def test_exponential_and_logarithm(self):
+        """Test complex exponential and logarithm functions"""
+        # Test Euler's identity: e^(i*pi) = -1
+        import math
+        i_pi = ComplexNumber('0', str(math.pi))
+        result = i_pi.exp()
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), -1.0, places=5)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), 0.0, places=5)
+        
+        # Test e^(i*pi/2) = i
+        i_pi_half = ComplexNumber('0', str(math.pi/2))
+        result = i_pi_half.exp()
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), 0.0, places=5)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), 1.0, places=5)
+        
+        # Test log(e) = 1
+        e_complex = ComplexNumber(str(math.e), '0')
+        result = e_complex.log()
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), 1.0, places=5)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), 0.0, places=5)
+
+    def test_square_root(self):
+        """Test complex square root"""
+        # Square root of -1 should be i
+        neg_one = ComplexNumber('-1', '0')
+        result = neg_one.sqrt()
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), 0.0, places=10)
+        self.assertAlmostEqual(abs(float(result.imag._base_to_decimal())), 1.0, places=10)
+        
+        # Square root of i
+        i = ComplexNumber('0', '1')
+        result = i.sqrt()
+        # sqrt(i) = (1+i)/sqrt(2)
+        expected_val = 1.0 / math.sqrt(2)
+        self.assertAlmostEqual(float(result.real._base_to_decimal()), expected_val, places=5)
+        self.assertAlmostEqual(float(result.imag._base_to_decimal()), expected_val, places=5)
+
+    def test_trigonometric_functions(self):
+        """Test complex trigonometric functions"""
+        # Test sin(i) = i*sinh(1)
+        i = ComplexNumber('0', '1')
+        sin_i = i.sin()
+        import math
+        expected_imag = math.sinh(1)
+        self.assertAlmostEqual(float(sin_i.real._base_to_decimal()), 0.0, places=5)
+        self.assertAlmostEqual(float(sin_i.imag._base_to_decimal()), expected_imag, places=5)
+        
+        # Test cos(i) = cosh(1)
+        cos_i = i.cos()
+        expected_real = math.cosh(1)
+        self.assertAlmostEqual(float(cos_i.real._base_to_decimal()), expected_real, places=5)
+        self.assertAlmostEqual(float(cos_i.imag._base_to_decimal()), 0.0, places=5)
+        
+        # Test sin(0) = 0
+        zero = ComplexNumber('0', '0')
+        sin_zero = zero.sin()
+        self.assertAlmostEqual(float(sin_zero.real._base_to_decimal()), 0.0, places=10)
+        self.assertAlmostEqual(float(sin_zero.imag._base_to_decimal()), 0.0, places=10)
+
+    def test_utility_functions(self):
+        """Test utility functions for complex numbers"""
+        # Test is_real
+        self.assertTrue(self.z_real.is_real())
+        self.assertFalse(self.z1.is_real())
+        
+        # Test is_imaginary
+        self.assertTrue(self.z_imag.is_imaginary())
+        self.assertFalse(self.z1.is_imaginary())
+        
+        # Test is_zero
+        self.assertTrue(self.z_zero.is_zero())
+        self.assertFalse(self.z1.is_zero())
+        
+        # Test magnitude alias
+        mag1 = self.z1.abs()
+        mag2 = self.z1.magnitude()
+        self.assertEqual(float(mag1._base_to_decimal()), float(mag2._base_to_decimal()))
+        
+        # Test phase alias
+        phase1 = self.z1.arg()
+        phase2 = self.z1.phase()
+        self.assertEqual(float(phase1._base_to_decimal()), float(phase2._base_to_decimal()))
+
+    def test_equality_and_comparison(self):
+        """Test equality operations for complex numbers"""
+        # Test equality
+        z1_copy = ComplexNumber('3', '4')
+        self.assertEqual(self.z1, z1_copy)
+        
+        # Test inequality
+        self.assertNotEqual(self.z1, self.z2)
+        
+        # Test equality with real numbers
+        real_five = ComplexNumber('5', '0')
+        self.assertEqual(real_five, 5)
+        
+        # Test inequality with real numbers
+        self.assertNotEqual(self.z1, 5)
+
+    def test_error_handling(self):
+        """Test error handling for complex numbers"""
+        # Test division by zero
+        with self.assertRaises(ZeroDivisionError):
+            self.z1 / self.z_zero
+        
+        # Test argument of zero complex number
+        with self.assertRaises(ValueError):
+            self.z_zero.arg()
+        
+        # Test invalid string format
+        with self.assertRaises(ValueError):
+            ComplexNumber.from_string('invalid')
+
+    def test_string_representations(self):
+        """Test string representations of complex numbers"""
+        # Test __str__
+        self.assertIsInstance(str(self.z1), str)
+        
+        # Test __repr__
+        self.assertIsInstance(repr(self.z1), str)
+        self.assertTrue('ComplexNumber' in repr(self.z1))
+        
+        # Test various formats
+        test_cases = [
+            (ComplexNumber('0', '0'), '0'),
+            (ComplexNumber('5', '0'), '5'),
+            (ComplexNumber('0', '3'), '3i'),
+            (ComplexNumber('0', '1'), 'i'),
+            (ComplexNumber('0', '-1'), '-i'),
+            (ComplexNumber('3', '4'), '3+4i'),
+            (ComplexNumber('3', '-4'), '3-4i'),
+        ]
+        
+        for complex_num, expected in test_cases:
+            self.assertEqual(str(complex_num), expected)
+
 def run_comprehensive_tests():
     """
     Run tests with a comprehensive reporting mechanism
     """
-    # Prepare the test suite
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestAdvancedPrecisionNumber)
+    # Prepare the test suite for both classes
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    
+    # Add test cases for both AdvancedPrecisionNumber and ComplexNumber
+    suite.addTests(loader.loadTestsFromTestCase(TestAdvancedPrecisionNumber))
+    suite.addTests(loader.loadTestsFromTestCase(TestComplexNumber))
     
     # Create our custom result collector
     result = ImprovedTestResult()
@@ -275,9 +580,9 @@ def run_comprehensive_tests():
     suite.run(result)
     
     # Print comprehensive test report
-    print("\n" + "=" * 50)
-    print("Advanced Precision Number Test Report")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("Advanced Precision Calculator Test Report")
+    print("=" * 60)
     
     # Print summary statistics
     print("\nTest Summary:")

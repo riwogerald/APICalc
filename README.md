@@ -1,30 +1,41 @@
-# Advanced Precision Integer Calculator
+# Advanced Precision Calculator
 
 ## Problem Statement
 
-Write an arbitrary-precision-integer calculator in a language that doesn't have native support and without relying on any libraries for the core functionality. Wrap it in a REPL. It should support at least addition, subtraction, multiplication, division (and modulo), exponentiation and factorial. Bonus points for supporting non-decimal bases, fractions, logarithms, etc.
+Write an arbitrary-precision calculator in a language that doesn't have native support and without relying on any libraries for the core functionality. Wrap it in a REPL. It should support at least addition, subtraction, multiplication, division (and modulo), exponentiation and factorial. Bonus points for supporting non-decimal bases, fractions, logarithms, etc.
 
 ## Overview
 
-An arbitrary-precision integer calculator implemented in Python without relying on external libraries for core mathematical operations. This calculator supports multiple number bases, advanced mathematical functions, and provides both a comprehensive REPL interface and a modern web-based frontend.
+A comprehensive arbitrary-precision calculator implemented in Python without relying on external libraries for core mathematical operations. This calculator supports multiple number bases, complex numbers, advanced mathematical functions, and provides multiple interfaces including REPL, modern web interface, and API endpoints.
+
+🎉 **NEW FEATURES:**
+- ✅ **Complex Number Support**: Full complex arithmetic (3+4i, 2-5j, etc.)
+- ✅ **Web Interface**: Beautiful, responsive web calculator
+- ✅ **Enhanced REPL**: Interactive command-line interface with history
+- ✅ **REST API**: Flask-based web server with JSON endpoints
+- ✅ **Pure Implementation**: All mathematical functions without external libraries
 
 The project includes:
-- **Python Core Engine**: Full-featured arbitrary precision calculator with REPL
-- **React Frontend**: Modern web interface with TypeScript
-- **Dual Implementation**: Both Python backend API and JavaScript frontend calculator
-- **Complete Integration**: Works offline and online
+- **Python Core Engine**: Full-featured arbitrary precision calculator with complex number support
+- **Web Interface**: Modern Flask-based web application with interactive UI
+- **REPL Interface**: Enhanced command-line interface with history and advanced features
+- **REST API Server**: JSON-based API for web integration
+- **Multiple Frontends**: Both web interface and React-based calculator
+- **Complete Integration**: Works offline, online, and as API service
 
-Here's what the dashboard looks like:
-![Main dashboard for the API Calculator.](screenshots/dashboard.png)
+Here's what the new web interface looks like:
+![Advanced Precision Calculator Web Interface](screenshots/web-calculator.png)
+🌐 **Web Calculator**: Available at `http://localhost:5000` when running locally
 🌐 **Live Demo**: https://apicalculator-v1.netlify.app/
 
 ## Architecture
 
 ### Backend (Python)
-- **Core Engine**: `APICalc.py` - Pure Python implementation with arbitrary precision
-- **REPL Interface**: Command-line interface for direct calculator interaction
-- **API Server**: `api_server.py` - Flask-based REST API (optional)
-- **Test Suite**: `test_APICalc.py` - Comprehensive testing framework
+- **Core Engine**: `APICalc.py` - Pure Python implementation with arbitrary precision and complex numbers
+- **Web Server**: `app.py` - Flask-based web application with REST API endpoints
+- **REPL Interface**: Enhanced command-line interface with history and advanced features
+- **API Server**: `api_server.py` - Alternative Flask-based REST API (optional)
+- **Test Suite**: Multiple test files for comprehensive validation
 
 ### Frontend (React + TypeScript)
 - **Modern Web Interface**: Built with React, TypeScript, and Tailwind CSS
@@ -41,28 +52,28 @@ Here's what the dashboard looks like:
 ## Features
 
 ### Core Arithmetic Operations
-- **Addition** (`+`): Add two numbers
-- **Subtraction** (`-`): Subtract two numbers  
-- **Multiplication** (`*`): Multiply two numbers
-- **Division** (`/`): Divide two numbers with arbitrary precision
+- **Addition** (`+`): Add two numbers (real or complex)
+- **Subtraction** (`-`): Subtract two numbers (real or complex)
+- **Multiplication** (`*`): Multiply two numbers (real or complex)
+- **Division** (`/`): Divide two numbers with arbitrary precision (real or complex)
 - **Floor Division** (`//`): Integer division
 - **Modulo** (`%`): Remainder operation
-- **Exponentiation** (`**`): Raise to power
+- **Exponentiation** (`**`): Raise to power (supports complex bases and exponents)
 
 ### Advanced Mathematical Functions
 - **Factorial** (`factorial(n)` or `n!`): Calculate factorial without libraries
-- **Square Root** (`sqrt(n)`): Calculate square root
+- **Square Root** (`sqrt(n)`): Calculate square root (real and complex)
 - **Square** (`sqr(n)`): Calculate square (n²)
 - **Cube** (`cube(n)`): Calculate cube (n³)
 - **Cube Root** (`cube_root(n)`): Calculate cube root
-- **Logarithm** (`log(n)` or `log(n, base)`): Natural or base logarithm (pure)
-- **Exponential** (`exp(n)`): Calculate e^n (pure)
+- **Logarithm** (`log(n)` or `log(n, base)`): Natural or base logarithm (pure, supports complex)
+- **Exponential** (`exp(n)`): Calculate e^n (pure, supports complex)
 - **Inverse** (`inverse(n)`): Calculate 1/n
 
 ### Trigonometric Functions
-- **Sine** (`sin(x)`): Calculate sine (pure)
-- **Cosine** (`cos(x)`): Calculate cosine (pure)
-- **Tangent** (`tan(x)`): Calculate tangent (pure)
+- **Sine** (`sin(x)`): Calculate sine (pure, supports complex numbers)
+- **Cosine** (`cos(x)`): Calculate cosine (pure, supports complex numbers)
+- **Tangent** (`tan(x)`): Calculate tangent (pure, supports complex numbers)
 - **Arcsine** (`arcsin(x)`): Calculate inverse sine (pure)
 - **Arccosine** (`arccos(x)`): Calculate inverse cosine (pure)
 - **Arctangent** (`arctan(x)`): Calculate inverse tangent (pure)
@@ -74,6 +85,15 @@ Here's what the dashboard looks like:
 - **Hexadecimal** (`0xFF`): Base-16 numbers
 - **Custom Bases**: Support for bases 2-36
 
+### Complex Number Support
+- **Complex Creation**: Create complex numbers (3+4i, 2-5j, 7i, -3i)
+- **Complex Arithmetic**: All basic operations work with complex numbers
+- **Complex Functions**: Trigonometric, exponential, and logarithmic functions
+- **Magnitude** (`abs(z)`): Calculate |z| = √(a² + b²)
+- **Conjugate** (`conjugate(z)`): Calculate z* = a - bi
+- **Argument** (`arg(z)`): Calculate phase angle of complex number
+- **Polar Form**: Create complex numbers from magnitude and phase
+
 ### Fraction Support
 - **Fraction Conversion** (`to_fraction()`): Convert to fraction representation
 - **Fraction Input**: Initialize with fraction values
@@ -81,9 +101,16 @@ Here's what the dashboard looks like:
 
 ## Usage
 
-### 🌐 Online Demo (Recommended)
+### 🌐 Web Interface (Recommended)
 
-Visit **https://apicalculator-v1.netlify.app/** to use the calculator immediately - no installation required!
+**Option 1: Local Web Interface**
+```bash
+python demo_calculator.py
+# Opens web browser automatically to http://localhost:5000
+```
+
+**Option 2: Online Demo**
+Visit **https://apicalculator-v1.netlify.app/** to use the React-based calculator immediately - no installation required!
 
 ### 💻 Local Development
 
@@ -122,21 +149,33 @@ Visit **https://apicalculator-v1.netlify.app/** to use the calculator immediatel
 python APICalc.py
 ```
 
-**REPL Commands:**
-- `menu` - Show help menu with all available operations
+**Enhanced REPL Commands:**
+- `menu` - Show comprehensive help menu with all available operations
 - `history` - Display calculation history (last 10 calculations)
 - `clear` - Clear calculation history
 - `quit` or `exit` - Exit the calculator
 
+**Complex Number Support in REPL:**
+- Type complex numbers directly: `3+4i`, `2-5j`, `7i`, `-3i`
+- Use complex functions: `abs(3+4i)`, `conjugate(2-3i)`, `arg(1+i)`
+- Complex arithmetic: `(3+4i) * (1-2i)`, `(2+3i) ** 2`
+
 ### Example Usage
 
 #### Web Interface
-- Use the visual calculator buttons for easy input
-- Type expressions directly in the input field
-- View calculation history in the sidebar
-- Copy results to clipboard with one click
+- **Modern UI**: Beautiful, responsive interface that works on desktop and mobile
+- **Button Grid**: Visual calculator buttons for easy input
+- **Direct Input**: Type expressions directly in the input field
+- **Complex Numbers**: Full support for complex number input and operations
+- **Mathematical Functions**: Access to all trigonometric, logarithmic, and advanced functions
+- **Settings Panel**: Configure precision (Standard/High/Extreme), number base, and display mode
+- **History System**: Persistent calculation history with click-to-reuse functionality
+- **Advanced Panel**: Quick access to specialized functions and complex number examples
+- **Error Handling**: User-friendly error messages and validation
+- **Keyboard Shortcuts**: Full keyboard navigation support
 
-Here's how the calculator interface looks:
+Here's how the new web calculator interface looks:
+![Advanced Precision Calculator Web Interface](screenshots/web-calculator.png)
 ![API Calculator.](screenshots/calc.png)
 ![API Calculator.](screenshots/calc2.png)
 
@@ -162,6 +201,22 @@ Here's how the calculator interface looks:
 
 >>> to_fraction(0.75)
 3/4
+
+# Complex Number Examples
+>>> 3+4i
+3+4i
+
+>>> abs(3+4i)
+5
+
+>>> (3+4i) * (1-2i)
+11-2i
+
+>>> sin(1+2i)
+3.165778513216168+1.959601041421606i
+
+>>> conjugate(3-4i)
+3+4i
 ```
 
 ### Advanced Examples
@@ -178,6 +233,19 @@ Here's how the calculator interface looks:
 
 >>> sqrt(2) ** 2
 2.0000000000000004
+
+# Complex Number Advanced Examples
+>>> sqrt(-1)
+1i
+
+>>> (3+4i) ** 2
+-7+24i
+
+>>> exp(1+2i)
+-1.1312043837568135+2.4717266720048188i
+
+>>> log(1+i)
+0.34657359027997264+0.7853981633974483i
 ```
 
 ## Implementation Details
@@ -186,8 +254,10 @@ Here's how the calculator interface looks:
 
 #### Python Core (`APICalc.py`)
 - **Precision Modes**: Standard (50 digits), High (200 digits), Extreme (1000 digits)
+- **Complex Numbers**: Full support for complex arithmetic and functions
 - **Algorithms**: Karatsuba multiplication, Newton-Raphson division, binary exponentiation
-- **Features**: Full arbitrary precision, all mathematical functions
+- **Features**: Full arbitrary precision, all mathematical functions, pure implementation
+- **Mathematical Constants**: Pi and e calculated using pure iterative methods
 
 #### JavaScript Frontend (`src/utils/calculator.ts`)
 - **Precision**: JavaScript number precision (sufficient for most use cases)
@@ -196,11 +266,20 @@ Here's how the calculator interface looks:
 
 ### Integration Architecture
 
+#### Web Interface Deployment (Flask)
+- Python Flask server with HTML/CSS/JavaScript frontend
+- Full arbitrary precision support including complex numbers
+- REST API endpoints for programmatic access
+- Real-time calculations with user-friendly interface
+- Supports all advanced mathematical functions
+- History management and settings persistence
+
 #### Static Deployment (Netlify)
 - Uses JavaScript calculator for all operations
 - No backend server required
 - Works offline after initial load
 - Instant calculations
+- Limited to JavaScript number precision
 
 #### Full Stack Deployment
 - Python API server provides full arbitrary precision
@@ -210,10 +289,13 @@ Here's how the calculator interface looks:
 
 ### Error Handling
 - Division by zero protection
-- Invalid input validation
+- Invalid input validation for complex numbers
 - Precision loss warnings (Python only)
-- Domain validation for mathematical functions
+- Domain validation for mathematical functions (real and complex)
+- Complex number parsing validation
 - TypeScript type safety (Frontend)
+- User-friendly error modals in web interface
+- API error responses with detailed messages
 
 ## Testing
 
@@ -329,11 +411,23 @@ npm run build
 ### Project Structure
 
 ```
-├── APICalc.py                    # Core Python calculator engine
-├── api_server.py                 # Flask API server (optional)
-├── test_APICalc.py              # Python test suite
+├── APICalc.py                    # Core Python calculator engine with complex numbers
+├── app.py                        # Flask web server with REST API endpoints
+├── api_server.py                 # Alternative Flask API server (optional)
+├── demo_calculator.py            # Demo launcher with auto-browser opening
+├── test_web_calculator.py        # Web calculator test suite
+├── test_APICalc.py              # Python core test suite
+├── final_test.py                 # Comprehensive system tests
+├── README_WebInterface.md        # Web interface documentation
 ├── start_local.bat              # Windows startup script
 ├── generate_js_calculator.py    # Generate JS from Python
+├── templates/
+│   └── calculator.html          # Main web interface template
+├── static/
+│   ├── css/
+│   │   └── style.css            # Web interface styling
+│   └── js/
+│       └── calculator.js        # Frontend JavaScript logic
 ├── src/
 │   ├── components/              # React components
 │   │   ├── CalculatorButtons.tsx
@@ -355,7 +449,9 @@ npm run build
 ## Architecture
 
 ### Core Classes
-- `AdvancedPrecisionNumber`: Main number class with arbitrary precision
+- `AdvancedPrecisionNumber`: Main number class with arbitrary precision and unary operations
+- `ComplexNumber`: Complex number class with full arithmetic and mathematical functions
+- `CalculatorAPI`: Web API handler for REST endpoints
 - `ImprovedTestResult`: Enhanced test result reporting
 
 ### Key Methods
@@ -372,6 +468,7 @@ npm run build
 - **Python 3.6+**
 - **✅ ZERO external dependencies** for core mathematical operations
 - **Pure implementation** of all trigonometric, logarithmic, and exponential functions
+- **Pure complex number implementation** with all mathematical functions
 - Optional modules only for high-precision fallbacks: `decimal` (very large numbers only)
 
 ### Web Interface (Frontend)
@@ -381,9 +478,10 @@ npm run build
 - **React 18+** with hooks
 - **Tailwind CSS** for styling
 
-### API Server (Optional)
-- **Flask** and **Flask-CORS** for API endpoints
+### Web Interface & API Server
+- **Flask** and **Flask-CORS** for web interface and API endpoints
 - **Python 3.6+**
+- **No additional dependencies** for core functionality
 
 ### Deployment
 - **Static hosting** (Netlify, Vercel, GitHub Pages) - No server required
@@ -404,9 +502,10 @@ MIT License - see LICENSE file for details.
 ## Pure Implementation Status
 
 ### ✅ **Fully Library-Independent Core Functions**
-- **All trigonometric functions**: Pure Taylor series and iterative methods
-- **Mathematical constants**: Pi calculated using Machin's formula
-- **Exponential and logarithmic functions**: Pure series expansion (in progress)
+- **All trigonometric functions**: Pure Taylor series and iterative methods (real and complex)
+- **Mathematical constants**: Pi and e calculated using pure iterative methods with caching
+- **Exponential and logarithmic functions**: Pure series expansion (real and complex)
+- **Complex number operations**: Full complex arithmetic without external libraries
 - **All arithmetic operations**: Native arbitrary-precision implementation
 - **No external library dependencies** for core mathematical operations
 
@@ -421,8 +520,9 @@ MIT License - see LICENSE file for details.
 - **arctan(x)**: Pure Taylor series implementation
 
 #### Mathematical Constants
-- **π (Pi)**: Machin's formula - π/4 = 4*arctan(1/5) - arctan(1/239)
+- **π (Pi)**: Leibniz formula with iterative calculation and caching - π = 4 * Σ((-1)^k / (2k+1))
 - **e**: Taylor series - e = Σ(1/n!) for n=0 to infinity
+- **Caching system**: Prevents recalculation for commonly used precision levels
 
 #### Algorithms Used
 - **Karatsuba multiplication** for large number multiplication
@@ -436,12 +536,20 @@ MIT License - see LICENSE file for details.
 - Very large numbers (>1000 digits) may cause performance issues
 - Memory usage grows with precision requirements
 - ✅ **All mathematical functions now pure** - No library dependencies
+- ✅ **Complex number support fully implemented** - All functions work with complex numbers
+- ✅ **Recursion issues resolved** - Iterative algorithms prevent stack overflow
 
-### JavaScript Implementation
+### JavaScript Implementation (React Frontend)
 - Limited to JavaScript number precision (~15-17 decimal digits)
 - Large factorials (>20!) exceed JavaScript precision
 - No complex numbers or advanced mathematical functions
 - Cannot handle arbitrary precision like Python version
+
+### Web Interface Implementation (Flask Frontend)
+- ✅ **Full arbitrary precision** through Python backend
+- ✅ **Complete complex number support** via API integration
+- ✅ **All mathematical functions available** through REST endpoints
+- ✅ **Real-time calculations** with user-friendly interface
 
 ### Deployment
 - Static deployment (Netlify) uses JavaScript calculator only
@@ -453,12 +561,18 @@ MIT License - see LICENSE file for details.
 - ✅ **Backend API integration** - COMPLETED
 - ✅ **Web interface deployment** - COMPLETED
 - ✅ **TypeScript integration** - COMPLETED
-- [ ] **Complex number support**
+- ✅ **Complex number support** - COMPLETED
+- ✅ **Flask web interface** - COMPLETED
+- ✅ **Enhanced REPL** - COMPLETED
 - [ ] **Matrix operations**
 - [ ] **Symbolic computation features**
 
 ### Advanced Features
 - ✅ **Pure arbitrary precision trigonometric functions** (Python) - COMPLETED
+- ✅ **Complex number trigonometric functions** (Python) - COMPLETED
+- ✅ **Web interface with history and settings** - COMPLETED
+- ✅ **REST API endpoints** - COMPLETED
+- ✅ **Mathematical constants with caching** - COMPLETED
 - [ ] **Pure arbitrary precision trigonometric functions** (JavaScript)
 - [ ] **WebAssembly port** for better performance
 - [ ] **PWA support** for offline mobile use

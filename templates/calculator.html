@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Precision Calculator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="calculator-container">
+        <header class="calculator-header">
+            <h1><i class="fas fa-calculator"></i> Advanced Precision Calculator</h1>
+            <p>High-precision arithmetic with complex number support</p>
+        </header>
+
+        <div class="calculator-main">
+            <!-- Display Area -->
+            <div class="display-section">
+                <div class="display-container">
+                    <div class="expression-display" id="expressionDisplay">Ready</div>
+                    <div class="result-display" id="resultDisplay">0</div>
+                </div>
+                
+                <!-- Settings Bar -->
+                <div class="settings-bar">
+                    <div class="setting-group">
+                        <label for="precisionMode">Precision:</label>
+                        <select id="precisionMode">
+                            <option value="standard">Standard (50 digits)</option>
+                            <option value="high">High (200 digits)</option>
+                            <option value="extreme">Extreme (1000 digits)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="numberBase">Base:</label>
+                        <select id="numberBase">
+                            <option value="10">Decimal (10)</option>
+                            <option value="2">Binary (2)</option>
+                            <option value="8">Octal (8)</option>
+                            <option value="16">Hexadecimal (16)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <button id="complexModeBtn" class="mode-btn" title="Toggle Complex Number Mode">
+                            <i class="fas fa-plus-minus"></i> Real
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-section">
+                <div class="input-container">
+                    <input type="text" id="calculatorInput" class="calculator-input" 
+                           placeholder="Enter expression (e.g., 3+4*5, 2+3i, sin(1.5))" 
+                           autocomplete="off">
+                    <button id="calculateBtn" class="calculate-btn">
+                        <i class="fas fa-equals"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Button Grid -->
+            <div class="button-grid">
+                <!-- Memory and Constants Row -->
+                <div class="button-row special-row">
+                    <button class="btn btn-memory" data-action="clear">AC</button>
+                    <button class="btn btn-memory" data-action="clear-entry">CE</button>
+                    <button class="btn btn-constant" data-action="pi">π</button>
+                    <button class="btn btn-constant" data-action="e">e</button>
+                    <button class="btn btn-operator" data-action="backspace">⌫</button>
+                </div>
+
+                <!-- Function Row 1 -->
+                <div class="button-row function-row">
+                    <button class="btn btn-function" data-function="sin">sin</button>
+                    <button class="btn btn-function" data-function="cos">cos</button>
+                    <button class="btn btn-function" data-function="tan">tan</button>
+                    <button class="btn btn-function" data-function="log">log</button>
+                    <button class="btn btn-function" data-function="sqrt">√</button>
+                </div>
+
+                <!-- Function Row 2 -->
+                <div class="button-row function-row">
+                    <button class="btn btn-function" data-function="arcsin">sin⁻¹</button>
+                    <button class="btn btn-function" data-function="arccos">cos⁻¹</button>
+                    <button class="btn btn-function" data-function="arctan">tan⁻¹</button>
+                    <button class="btn btn-function" data-function="exp">eˣ</button>
+                    <button class="btn btn-function" data-function="sqr">x²</button>
+                </div>
+
+                <!-- Numbers and Basic Operations -->
+                <div class="button-row">
+                    <button class="btn btn-number" data-value="7">7</button>
+                    <button class="btn btn-number" data-value="8">8</button>
+                    <button class="btn btn-number" data-value="9">9</button>
+                    <button class="btn btn-operator" data-value="/">/</button>
+                    <button class="btn btn-function" data-function="factorial">n!</button>
+                </div>
+
+                <div class="button-row">
+                    <button class="btn btn-number" data-value="4">4</button>
+                    <button class="btn btn-number" data-value="5">5</button>
+                    <button class="btn btn-number" data-value="6">6</button>
+                    <button class="btn btn-operator" data-value="*">×</button>
+                    <button class="btn btn-operator" data-value="**">x^y</button>
+                </div>
+
+                <div class="button-row">
+                    <button class="btn btn-number" data-value="1">1</button>
+                    <button class="btn btn-number" data-value="2">2</button>
+                    <button class="btn btn-number" data-value="3">3</button>
+                    <button class="btn btn-operator" data-value="-">−</button>
+                    <button class="btn btn-complex" data-value="i">i</button>
+                </div>
+
+                <div class="button-row">
+                    <button class="btn btn-number wide" data-value="0">0</button>
+                    <button class="btn btn-number" data-value=".">.</button>
+                    <button class="btn btn-operator" data-value="+">+</button>
+                    <button class="btn btn-equals" data-action="calculate">=</button>
+                </div>
+            </div>
+
+            <!-- Advanced Panel (Initially Hidden) -->
+            <div class="advanced-panel" id="advancedPanel">
+                <h3>Advanced Functions</h3>
+                <div class="advanced-buttons">
+                    <button class="btn btn-function" data-function="cube">x³</button>
+                    <button class="btn btn-function" data-function="cube_root">∛x</button>
+                    <button class="btn btn-function" data-function="inverse">1/x</button>
+                    <button class="btn btn-function" data-function="abs">|x|</button>
+                    <button class="btn btn-function" data-function="conjugate">x*</button>
+                    <button class="btn btn-function" data-function="arg">arg(x)</button>
+                </div>
+                
+                <h3>Complex Number Examples</h3>
+                <div class="example-buttons">
+                    <button class="btn btn-example" data-example="3+4i">3+4i</button>
+                    <button class="btn btn-example" data-example="2-3i">2-3i</button>
+                    <button class="btn btn-example" data-example="5i">5i</button>
+                    <button class="btn btn-example" data-example="-2i">-2i</button>
+                </div>
+            </div>
+
+            <!-- Toggle Advanced Panel -->
+            <div class="advanced-toggle">
+                <button id="advancedToggle" class="advanced-toggle-btn">
+                    <i class="fas fa-chevron-down"></i> Advanced Functions
+                </button>
+            </div>
+        </div>
+
+        <!-- History Panel -->
+        <div class="history-panel" id="historyPanel">
+            <div class="history-header">
+                <h3><i class="fas fa-history"></i> Calculation History</h3>
+                <button id="clearHistory" class="btn-clear-history">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+            <div class="history-content" id="historyContent">
+                <p class="history-empty">No calculations yet</p>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-left">
+                <span id="modeIndicator">Real Mode</span>
+                <span id="baseIndicator">Base 10</span>
+                <span id="precisionIndicator">Standard Precision</span>
+            </div>
+            <div class="status-right">
+                <button id="historyToggle" class="status-btn">
+                    <i class="fas fa-history"></i> History
+                </button>
+                <span id="connectionStatus" class="status-connected">
+                    <i class="fas fa-circle"></i> Connected
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-cog fa-spin"></i>
+            <p>Calculating...</p>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal" id="errorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Calculation Error</h3>
+                <button class="modal-close" id="errorModalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="errorMessage">An error occurred during calculation.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="errorModalOk">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
+</body>
+</html>
