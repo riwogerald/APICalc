@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import traceback
 import json
+import time
 from APICalc import AdvancedPrecisionNumber
 
 app = Flask(__name__)
@@ -24,22 +25,58 @@ class CalculatorAPI:
             if any(func in expression.lower() for func in ['factorial(', 'sqrt(', 'sin(', 'cos(', 'tan(', 'log(']):
                 return self.handle_function_call(expression)
             
-            # Handle simple binary arithmetic - direct evaluation for now
+            # Handle power operator (**)
+            if '**' in expression:
+                return self.handle_binary_operation(expression, '**')
+            
+            # Handle other binary operations
+            for op in ['*', '/', '+', '-']:
+                if op in expression:
+                    return self.handle_binary_operation(expression, op)
+            
+            # Handle simple numbers or base conversions
             try:
-                # For basic expressions, try direct evaluation
-                if all(c in '0123456789+-*/.() ' for c in expression):
-                    # Basic arithmetic using eval for simplicity
+                num = AdvancedPrecisionNumber(expression)
+                return str(num)
+            except:
+                # Last resort: try eval for basic arithmetic
+                if all(c in '0123456789+-*/.()\t\n ' for c in expression):
                     result = eval(expression)
                     return str(result)
                 else:
-                    # Try to parse as single number (handles bases)
-                    num = AdvancedPrecisionNumber(expression)
-                    return str(num)
-            except:
-                raise ValueError(f"Unsupported expression: {expression}")
+                    raise ValueError(f"Unsupported expression: {expression}")
             
         except Exception as e:
             raise ValueError(f"Invalid expression: {str(e)}")
+    
+    def handle_binary_operation(self, expression, operator):
+        """Handle binary operations like +, -, *, /, **"""
+        parts = expression.split(operator, 1)
+        if len(parts) != 2:
+            raise ValueError(f"Invalid {operator} operation")
+        
+        left_str = parts[0].strip()
+        right_str = parts[1].strip()
+        
+        # Convert to AdvancedPrecisionNumber
+        left = AdvancedPrecisionNumber(left_str)
+        right = AdvancedPrecisionNumber(right_str)
+        
+        # Perform operation
+        if operator == '+':
+            result = left + right
+        elif operator == '-':
+            result = left - right
+        elif operator == '*':
+            result = left * right
+        elif operator == '/':
+            result = left / right
+        elif operator == '**':
+            result = left ** right
+        else:
+            raise ValueError(f"Unsupported operator: {operator}")
+        
+        return str(result)
     
     def handle_function_call(self, expression):
         """Handle function calls like factorial(5), sqrt(16), etc."""

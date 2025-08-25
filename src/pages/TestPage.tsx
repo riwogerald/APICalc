@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Play, CheckCircle, XCircle, RefreshCw, Cpu, Wifi, WifiOff } from 'lucide-react'
-import pythonCalculator from '../utils/pythonCalculator'
+import { Play, CheckCircle, XCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import calculatorApi from '../services/calculatorApi'
+import localCalculator from '../utils/calculator'
 
 interface TestCase {
   id: string
@@ -21,6 +22,17 @@ interface TestResult {
 }
 
 const TestPage: React.FC = () => {
+  const [isApiMode, setIsApiMode] = useState(false)
+  
+  useEffect(() => {
+    // Check API availability on component mount
+    const checkApiStatus = async () => {
+      const available = await calculatorApi.checkApiHealth()
+      setIsApiMode(available)
+    }
+    checkApiStatus()
+  }, [])
+  
   const [testCases] = useState<TestCase[]>([
     // Basic Arithmetic
     {
@@ -149,51 +161,36 @@ const TestPage: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [runningTestId, setRunningTestId] = useState<string | null>(null)
-  const [pythonStatus, setPythonStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-
   const categories = ['All', ...Array.from(new Set(testCases.map(test => test.category)))]
 
   const filteredTests = selectedCategory === 'All' 
     ? testCases 
     : testCases.filter(test => test.category === selectedCategory)
 
-  // Initialize Python calculator on component mount
-  useEffect(() => {
-    const initializePython = async () => {
+  const performTestCalculation = async (expression: string): Promise<string> => {
+    try {
+      // First try Python API for comprehensive testing
+      const apiResult = await calculatorApi.calculate(expression)
+      console.log('🐍 Using Python API for test calculation')
+      return apiResult
+    } catch (apiError) {
+      console.warn('Python API failed for test, falling back to local calculator:', apiError)
+      setIsApiMode(false) // Update API status
+      
       try {
-        setPythonStatus('loading')
-        await pythonCalculator.initialize()
-        setPythonStatus('ready')
-        console.log('🐍 Python calculator ready for tests!')
-      } catch (error) {
-        console.error('Failed to initialize Python calculator:', error)
-        setPythonStatus('error')
+        // Fallback to local TypeScript calculator
+        const result = localCalculator.calculate(expression)
+        
+        // Check if result is an error
+        if (typeof result === 'string' && result.startsWith('Error:')) {
+          return result // Keep the error format
+        }
+        
+        console.log('📱 Using local TypeScript calculator for test')
+        return result
+      } catch (localError) {
+        return `Error: ${localError instanceof Error ? localError.message : 'Both API and local calculation failed'}`
       }
-    }
-
-    initializePython()
-  }, [])
-
-  const callPythonCalculator = async (expression: string): Promise<string> => {
-    try {
-      // Use the direct Python calculator
-      const result = await pythonCalculator.calculate(expression)
-      return result
-    } catch (error) {
-      // Fallback to TypeScript calculator if Python fails
-      console.warn('Python calculator failed, falling back to TypeScript:', error)
-      return await fallbackCalculation(expression)
-    }
-  }
-
-  const fallbackCalculation = async (expression: string): Promise<string> => {
-    try {
-      // Import the local TypeScript calculator as fallback
-      const AdvancedCalculator = await import('../utils/calculator')
-      const result = AdvancedCalculator.default.calculate(expression)
-      return result
-    } catch (error) {
-      return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
 
@@ -202,8 +199,8 @@ const TestPage: React.FC = () => {
     setRunningTestId(testCase.id)
     
     try {
-      // Call Python calculator directly
-      const actual = await callPythonCalculator(testCase.expression)
+      // Use Python API or fallback calculator
+      const actual = await performTestCalculation(testCase.expression)
       const duration = Date.now() - startTime
       
       return {
@@ -270,26 +267,19 @@ const TestPage: React.FC = () => {
             Comprehensive testing for the Advanced Precision Calculator
           </p>
           
-          {/* Python Engine Status */}
-          <div className="inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm">
-            <Cpu className="w-4 h-4" />
-            <span>Python Engine:</span>
-            {pythonStatus === 'loading' && (
+          {/* API Status Indicator */}
+          <div className="inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm bg-gray-50">
+            {isApiMode ? (
               <>
-                <div className="spinner" />
-                <span className="text-blue-600">Loading...</span>
+                <Wifi className="w-4 h-4 text-green-600" />
+                <span className="text-green-600 font-medium">Testing with Python API</span>
+                <span className="text-gray-500">(Full Precision)</span>
               </>
-            )}
-            {pythonStatus === 'ready' && (
+            ) : (
               <>
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-green-600 font-medium">Ready</span>
-              </>
-            )}
-            {pythonStatus === 'error' && (
-              <>
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span className="text-red-600 font-medium">Error (using fallback)</span>
+                <WifiOff className="w-4 h-4 text-orange-600" />
+                <span className="text-orange-600 font-medium">Testing with Local Calculator</span>
+                <span className="text-gray-500">(Limited Precision)</span>
               </>
             )}
           </div>

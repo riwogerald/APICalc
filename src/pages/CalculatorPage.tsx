@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, History, Trash2, Copy, Check } from 'lucide-react'
+import { Send, History, Trash2, Copy, Check, Wifi, WifiOff } from 'lucide-react'
 import CalculatorButtons from '../components/CalculatorButtons'
+import calculatorApi from '../services/calculatorApi'
+import localCalculator from '../utils/calculator'
 
 interface HistoryEntry {
   expression: string
@@ -15,9 +17,17 @@ const CalculatorPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [isApiMode, setIsApiMode] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    // Check API availability on component mount
+    const checkApiStatus = async () => {
+      const available = await calculatorApi.checkApiHealth()
+      setIsApiMode(available)
+    }
+    checkApiStatus()
+
     // Load history from localStorage
     const savedHistory = localStorage.getItem('calculator-history')
     if (savedHistory) {
@@ -43,15 +53,13 @@ const CalculatorPage: React.FC = () => {
 
     setIsLoading(true)
     try {
-      // Call the Python backend API
-      const mockResult = await simulateCalculation(input)
-      
-      setResult(mockResult)
+      const calculationResult = await performCalculation(input)
+      setResult(calculationResult)
       
       // Add to history
       const newEntry: HistoryEntry = {
         expression: input,
-        result: mockResult,
+        result: calculationResult,
         timestamp: new Date()
       }
       
@@ -64,28 +72,33 @@ const CalculatorPage: React.FC = () => {
     }
   }
 
-  const simulateCalculation = async (expression: string): Promise<string> => {
+  const performCalculation = async (expression: string): Promise<string> => {
     try {
-      // Import the local TypeScript calculator
-      const AdvancedCalculator = await import('../utils/calculator')
+      // First try Python API for arbitrary precision
+      const apiResult = await calculatorApi.calculate(expression)
+      console.log('🐍 Using Python API for calculation')
+      return apiResult
+    } catch (apiError) {
+      console.warn('Python API failed, falling back to local calculator:', apiError)
+      setIsApiMode(false) // Update API status
       
-      // Simulate a small delay to match API behavior
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // Use the local calculator
-      const result = AdvancedCalculator.default.calculate(expression)
-      
-      // Check if result is an error
-      if (typeof result === 'string' && result.startsWith('Error:')) {
-        throw new Error(result.substring(7)) // Remove 'Error: ' prefix
+      try {
+        // Fallback to local TypeScript calculator
+        const result = localCalculator.calculate(expression)
+        
+        // Check if result is an error
+        if (typeof result === 'string' && result.startsWith('Error:')) {
+          throw new Error(result.substring(7)) // Remove 'Error: ' prefix
+        }
+        
+        console.log('📱 Using local TypeScript calculator')
+        return result
+      } catch (localError) {
+        if (localError instanceof Error) {
+          throw localError
+        }
+        throw new Error('Both API and local calculation failed')
       }
-      
-      return result
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error
-      }
-      throw new Error('Calculation failed')
     }
   }
 
@@ -139,9 +152,26 @@ const CalculatorPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Advanced Precision Calculator
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             Enter mathematical expressions with arbitrary precision
           </p>
+          
+          {/* API Status Indicator */}
+          <div className="inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm bg-gray-50">
+            {isApiMode ? (
+              <>
+                <Wifi className="w-4 h-4 text-green-600" />
+                <span className="text-green-600 font-medium">Python API Connected</span>
+                <span className="text-gray-500">(Arbitrary Precision)</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-orange-600" />
+                <span className="text-orange-600 font-medium">Local Calculator</span>
+                <span className="text-gray-500">(Limited Precision)</span>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
