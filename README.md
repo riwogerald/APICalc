@@ -6,9 +6,10 @@ Write an arbitrary-precision calculator in a language that doesn't have native s
 
 ## Overview
 
-A comprehensive arbitrary-precision calculator implemented in Python without relying on external libraries for core mathematical operations. This calculator supports multiple number bases, complex numbers, advanced mathematical functions, and provides multiple interfaces including REPL, modern web interface, and API endpoints.
+A comprehensive arbitrary-precision calculator implemented in Python without relying on external libraries for core mathematical operations. This calculator supports multiple number bases, complex numbers, matrix operations, advanced mathematical functions, and provides multiple interfaces including REPL, modern web interface, and API endpoints.
 
 🎉 **NEW FEATURES:**
+- ✅ **Matrix Operations**: Full matrix arithmetic with arbitrary precision elements
 - ✅ **Complex Number Support**: Full complex arithmetic (3+4i, 2-5j, etc.)
 - ✅ **Web Interface**: Beautiful, responsive web calculator
 - ✅ **Enhanced REPL**: Interactive command-line interface with history
@@ -99,6 +100,17 @@ Here's what the new web interface looks like:
 - **Fraction Input**: Initialize with fraction values
 - **Fraction Arithmetic**: Perform operations on fractions
 
+### Matrix Operations
+- **Matrix Creation**: Create matrices from lists or using utility functions
+- **Matrix Arithmetic**: Addition, subtraction, multiplication with arbitrary precision
+- **Matrix Transpose** (`transpose(m)`): Calculate matrix transpose
+- **Matrix Determinant** (`determinant(m)`): Calculate determinant for square matrices
+- **Matrix Inverse** (`inverse(m)`): Calculate matrix inverse (when it exists)
+- **Matrix Trace** (`trace(m)`): Calculate trace (sum of diagonal elements)
+- **Special Matrices**: Identity (`identity(n)`), zeros (`zeros(r, c)`), ones (`ones(r, c)`)
+- **Complex Matrix Support**: All operations work with complex number matrices
+- **Arbitrary Precision**: All matrix elements maintain full arbitrary precision
+
 ## Usage
 
 ### 🌐 Web Interface (Recommended)
@@ -160,6 +172,13 @@ python APICalc.py
 - Use complex functions: `abs(3+4i)`, `conjugate(2-3i)`, `arg(1+i)`
 - Complex arithmetic: `(3+4i) * (1-2i)`, `(2+3i) ** 2`
 
+**Matrix Operations in REPL:**
+- Create matrices: `matrix([[1,2],[3,4]])` or use matrix literals `[[1,2],[3,4]]`
+- Matrix functions: `identity(3)`, `zeros(2,3)`, `ones(3,2)`
+- Matrix operations: `transpose(m)`, `determinant(m)`, `trace(m)`, `inverse(m)`
+- Complex matrices: `[["1+2i", "3-i"], ["4i", "2"]]`
+- All operations support arbitrary precision elements
+
 ### Example Usage
 
 #### Web Interface
@@ -217,6 +236,30 @@ Here's how the new web calculator interface looks:
 
 >>> conjugate(3-4i)
 3+4i
+
+# Matrix Examples
+>>> identity(3)
+[
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1]
+]
+
+>>> zeros(2, 3)
+[
+  [0, 0, 0],
+  [0, 0, 0]
+]
+
+>>> transpose([[1, 2, 3], [4, 5, 6]])
+[
+  [1, 4],
+  [2, 5],
+  [3, 6]
+]
+
+>>> determinant([[1, 2], [3, 4]])
+-2
 ```
 
 ### Advanced Examples
@@ -246,6 +289,32 @@ Here's how the new web calculator interface looks:
 
 >>> log(1+i)
 0.34657359027997264+0.7853981633974483i
+
+# Advanced Matrix Examples
+>>> m1 = [[1, 2], [3, 4]]
+>>> m2 = [[5, 6], [7, 8]]
+>>> matrix_add(m1, m2)
+[
+  [6, 8],
+  [10, 12]
+]
+
+>>> matrix_multiply(m1, m2)
+[
+  [19, 22],
+  [43, 50]
+]
+
+>>> trace([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+15
+
+# Complex Matrix Example
+>>> complex_matrix = [["1+2i", "3-i"], ["0+4i", "2"]]
+>>> transpose(complex_matrix)
+[
+  [1+2i, 4i],
+  [3-1i, 2]
+]
 ```
 
 ## Implementation Details
@@ -255,6 +324,7 @@ Here's how the new web calculator interface looks:
 #### Python Core (`APICalc.py`)
 - **Precision Modes**: Standard (50 digits), High (200 digits), Extreme (1000 digits)
 - **Complex Numbers**: Full support for complex arithmetic and functions
+- **Matrix Operations**: Complete matrix arithmetic with arbitrary precision elements
 - **Algorithms**: Karatsuba multiplication, Newton-Raphson division, binary exponentiation
 - **Features**: Full arbitrary precision, all mathematical functions, pure implementation
 - **Mathematical Constants**: Pi and e calculated using pure iterative methods
@@ -411,12 +481,14 @@ npm run build
 ### Project Structure
 
 ```
-├── APICalc.py                    # Core Python calculator engine with complex numbers
+├── APICalc.py                    # Core Python calculator engine with complex numbers and matrices
+├── matrix_operations.py          # Pure implementation of matrix operations
 ├── app.py                        # Flask web server with REST API endpoints
 ├── api_server.py                 # Alternative Flask API server (optional)
 ├── demo_calculator.py            # Demo launcher with auto-browser opening
 ├── test_web_calculator.py        # Web calculator test suite
 ├── test_APICalc.py              # Python core test suite
+├── test_matrix.py               # Matrix operations test suite
 ├── final_test.py                 # Comprehensive system tests
 ├── README_WebInterface.md        # Web interface documentation
 ├── start_local.bat              # Windows startup script
@@ -451,6 +523,7 @@ npm run build
 ### Core Classes
 - `AdvancedPrecisionNumber`: Main number class with arbitrary precision and unary operations
 - `ComplexNumber`: Complex number class with full arithmetic and mathematical functions
+- `Matrix`: Matrix class supporting arbitrary precision elements and complex matrices
 - `CalculatorAPI`: Web API handler for REST endpoints
 - `ImprovedTestResult`: Enhanced test result reporting
 
@@ -506,6 +579,7 @@ MIT License - see LICENSE file for details.
 - **Mathematical constants**: Pi and e calculated using pure iterative methods with caching
 - **Exponential and logarithmic functions**: Pure series expansion (real and complex)
 - **Complex number operations**: Full complex arithmetic without external libraries
+- **Matrix operations**: Complete matrix arithmetic using pure arbitrary precision
 - **All arithmetic operations**: Native arbitrary-precision implementation
 - **No external library dependencies** for core mathematical operations
 
@@ -564,7 +638,7 @@ MIT License - see LICENSE file for details.
 - ✅ **Complex number support** - COMPLETED
 - ✅ **Flask web interface** - COMPLETED
 - ✅ **Enhanced REPL** - COMPLETED
-- [ ] **Matrix operations**
+- ✅ **Matrix operations** - COMPLETED
 - [ ] **Symbolic computation features**
 
 ### Advanced Features

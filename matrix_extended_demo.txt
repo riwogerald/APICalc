@@ -1,0 +1,6 @@
+identity(2)
+zeros(2, 3)
+ones(3, 2)
+3 + 4i
+2 * 5
+quit

@@ -1,0 +1,6 @@
+menu
+identity(3)
+2 + 3
+sqrt(16)
+factorial(5)
+quit

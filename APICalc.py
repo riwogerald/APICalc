@@ -2,6 +2,13 @@
 import sys
 import fractions
 
+# Import matrix operations
+try:
+    from matrix_operations import Matrix, matrix_add, matrix_subtract, matrix_multiply, matrix_transpose, matrix_determinant, matrix_inverse, matrix_trace
+except ImportError:
+    print("Warning: Matrix operations not available. Please ensure matrix_operations.py is in the same directory.")
+    Matrix = None
+
 class AdvancedPrecisionNumber:
     # Predefined precision modes
     PRECISION_MODES = {
@@ -1812,7 +1819,20 @@ def calculate_repl():
         print(f"{'Complex Log':^25}{'log(3+4i)':^35}")
         print(f"{'Complex Power':^25}{'(3+4i)**2':^35}")
         print(f"{'Complex Trig':^25}{'sin(1+2i), cos(1+2i)':^35}")
-        print("=" * 60)
+        print("-" * 60)
+        if Matrix is not None:
+            print(f"{'MATRIX OPERATIONS':^60}")
+            print("-" * 60)
+            print(f"{'Matrix Creation':^25}{'matrix([[1,2],[3,4]])':^35}")
+            print(f"{'Matrix Addition':^25}{'matrix_add(m1, m2)':^35}")
+            print(f"{'Matrix Multiplication':^25}{'matrix_multiply(m1, m2)':^35}")
+            print(f"{'Matrix Transpose':^25}{'matrix_transpose(m1)':^35}")
+            print(f"{'Matrix Determinant':^25}{'matrix_determinant(m1)':^35}")
+            print(f"{'Matrix Inverse':^25}{'matrix_inverse(m1)':^35}")
+            print(f"{'Matrix Trace':^25}{'matrix_trace(m1)':^35}")
+            print(f"{'Identity Matrix':^25}{'identity(3)':^35}")
+            print(f"{'Zero Matrix':^25}{'zeros(2, 3)':^35}")
+            print("-" * 60)
         print("Commands: 'menu' (help), 'history' (show history), 'clear' (clear history), 'quit' (exit)")
         print("Performance: Optimized for very large numbers with Karatsuba, Toom-Cook, and FFT algorithms")
         print("=" * 60)
@@ -1986,6 +2006,81 @@ def calculate_repl():
 
             if not raw_expr:
                 continue
+
+            # Handle matrix functions first (if available)
+            raw_expr_lower = raw_expr.lower()
+            if Matrix is not None:
+                matrix_functions = ['matrix(', 'matrix_add(', 'matrix_subtract(', 'matrix_multiply(', 'matrix_transpose(',
+                                  'matrix_determinant(', 'matrix_inverse(', 'matrix_trace(', 'identity(', 'zeros(', 'ones(']
+                
+                if any(func in raw_expr_lower for func in matrix_functions):
+                    try:
+                        # Handle matrix function calls
+                        if 'matrix(' in raw_expr_lower:
+                            # Extract matrix data
+                            start = raw_expr_lower.find('matrix(') + 7
+                            end = raw_expr.rfind(')')
+                            if end != -1:
+                                matrix_data_str = raw_expr[start:end]
+                                result = Matrix.from_string(matrix_data_str)
+                                print(result)
+                                calculation_history.append(f"{raw_expr} = {result}")
+                                continue
+                        
+                        # Handle other matrix functions
+                        for func_name in ['matrix_add', 'matrix_subtract', 'matrix_multiply', 'matrix_transpose',
+                                        'matrix_determinant', 'matrix_inverse', 'matrix_trace']:
+                            if f'{func_name}(' in raw_expr_lower:
+                                start = raw_expr_lower.find(f'{func_name}(') + len(func_name) + 1
+                                end = raw_expr_lower.find(')', start)
+                                if end != -1:
+                                    args_str = raw_expr[start:end].strip()
+                                    # For now, this is a simplified parser - in a full implementation,
+                                    # you'd want more sophisticated argument parsing
+                                    print(f"Matrix function {func_name} called with args: {args_str}")
+                                    print("Matrix variable support not yet implemented in REPL")
+                                    print("Use: python -c \"from matrix_operations import *; print(matrix_add(...))\"")
+                                    continue
+                        
+                        # Handle matrix creation functions
+                        if 'identity(' in raw_expr_lower:
+                            start = raw_expr_lower.find('identity(') + 9
+                            end = raw_expr.find(')', start)
+                            if end != -1:
+                                size_str = raw_expr[start:end].strip()
+                                size = int(size_str)
+                                result = Matrix.identity(size)
+                                print(result)
+                                calculation_history.append(f"{raw_expr} = {result}")
+                                continue
+                        
+                        if 'zeros(' in raw_expr_lower:
+                            start = raw_expr_lower.find('zeros(') + 6
+                            end = raw_expr.find(')', start)
+                            if end != -1:
+                                args_str = raw_expr[start:end].strip()
+                                if ',' in args_str:
+                                    rows, cols = [int(x.strip()) for x in args_str.split(',')]
+                                    result = Matrix.zeros(rows, cols)
+                                    print(result)
+                                    calculation_history.append(f"{raw_expr} = {result}")
+                                    continue
+                        
+                        if 'ones(' in raw_expr_lower:
+                            start = raw_expr_lower.find('ones(') + 5
+                            end = raw_expr.find(')', start)
+                            if end != -1:
+                                args_str = raw_expr[start:end].strip()
+                                if ',' in args_str:
+                                    rows, cols = [int(x.strip()) for x in args_str.split(',')]
+                                    result = Matrix.ones(rows, cols)
+                                    print(result)
+                                    calculation_history.append(f"{raw_expr} = {result}")
+                                    continue
+                        
+                    except Exception as e:
+                        print(f"Error in matrix operation: {e}")
+                        continue
 
             # Handle function calls (case-insensitive)
             raw_expr_lower = raw_expr.lower()
